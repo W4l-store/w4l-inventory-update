@@ -33,8 +33,12 @@ def authorize(refresh_token, lwa_app_id, lwa_client_secret):
                 "client_secret": lwa_client_secret,
             },
         )
+
         response.raise_for_status()
-        return response.json()["access_token"]
+        access_token = response.json()["access_token"]
+
+        logger.info(f"Amazon access tocken: {access_token}")
+        return access_token
     except requests.RequestException as e:
         logger.error(f"Authentication failed: {e}")
         raise
@@ -55,6 +59,8 @@ def request_report(access_token, report_type, marketplace_id):
                 "marketplaceIds": [marketplace_id],
             },
         )
+        print(json.dumps(response.json(), indent=2))
+
         response.raise_for_status()
         return response.json()["payload"]["reportId"]
     except requests.RequestException as e:
@@ -70,7 +76,7 @@ def create_inventory_reports(access_token, marketplace_ids):
         try:
             report_id = request_report(access_token, "GET_MERCHANT_LISTINGS_DATA_BACK_COMPAT", marketplace_id)
             report_ids[marketplace_id] = report_id
-            time.sleep(1)  # Delay to avoid rate limiting
+            time.sleep(2)  # Delay to avoid rate limiting
         except Exception as e:
             logger.error(f"Failed to create report for marketplace {marketplace_id}: {e}")
     return report_ids
@@ -94,7 +100,8 @@ def check_report_status(access_token, report_ids):
                         report_document_ids[marketplace_id] = response.json()["payload"]["reportDocumentId"]
                 except requests.RequestException as e:
                     logger.error(f"Failed to check report status for marketplace {marketplace_id}: {e}")
-        time.sleep(60)  # Wait before checking again
+            if len(report_document_ids) != len(report_ids): time.sleep(4)  # Wait before checking again if not all reports are ready
+        time.sleep(30)  # Wait before checking again
     return report_document_ids
 
 def decompress_gzip(compressed_data):
@@ -136,7 +143,7 @@ def download_and_save_reports(access_token, report_document_ids):
             if document_info.get("compressionAlgorithm") == "GZIP":
                 decompressed_report = decompress_gzip(unpadded_report)
             else:
-                decompressed_report = unpadded_report
+                raise ValueError("Unexpected compression algorithm: " + document_info.get("compressionAlgorithm"))
 
             # Save report
             filename = f"inventory_report_{marketplace_id}.txt"
@@ -158,7 +165,7 @@ def main():
     load_dotenv()  # load environment variables from .env file
 
     # Get the keys from environment variables
-    refresh_token = os.getenv('RESH_TOKEN')
+    refresh_token = os.getenv('REFRESH_TOKEN')
     lwa_app_id = os.getenv('LWA_APP_ID')
     lwa_client_secret = os.getenv('LWA_CLIENT_SECRET')
     marketplace_ids = ["ATVPDKIKX0DER", "A2EUQ1WTGCTBG2"]  # US and CA marketplaces
