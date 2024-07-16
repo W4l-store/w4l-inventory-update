@@ -24,7 +24,7 @@ class SocketIOHandler(SocketHandler):
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-logger.addHandler(SocketIOHandler(None))
+logger.addHandler(SocketIOHandler('localhost', 9000))
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -106,4 +106,4 @@ def test_connect():
     print('Client connected')
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
