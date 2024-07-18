@@ -120,4 +120,11 @@ dmypy.json
 #Pycharm IDE
 .idea
 
-prepering/data/
+
+# credentials
+credentials/
+
+# procesing files 
+preparing/data
+preparing/results
+

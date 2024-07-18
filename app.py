@@ -51,40 +51,22 @@ def upload_file():
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
             return process_file(file_path)
-    return render_template('upload.html')
+    else:
+        return render_template('upload.html')
+
+
+
 
 def process_file(file_path):
     try:
         with open(file_path, 'r') as file:
             reader = csv.reader(file, delimiter='\t')
-            # Process the file content here
-            # This is a placeholder for the actual processing logic
-            time.sleep(5)  # Simulating processing time
+           
         return jsonify({'message': 'File processed successfully'})
     except Exception as e:
         logger.error(f"Error processing file: {str(e)}")
         return jsonify({'error': f'Error processing file: {str(e)}'})
 
-def generate_update_files():
-    try:
-        # Generate update files logic here
-        # This is a placeholder for the actual file generation logic
-        time.sleep(10)  # Simulating file generation time
-        
-        # Create a zip file
-        with zipfile.ZipFile('update_files.zip', 'w') as zipf:
-            zipf.write('dummy_update_file.txt')  # Replace with actual files
-        
-        return True
-    except Exception as e:
-        logger.error(f"Error generating update files: {str(e)}")
-        return False
-
-@app.route('/generate_files', methods=['POST'])
-def generate_files():
-    thread = threading.Thread(target=generate_update_files)
-    thread.start()
-    return jsonify({'message': 'File generation started'})
 
 @app.route('/download')
 def download_file():

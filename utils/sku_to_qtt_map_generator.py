@@ -1,8 +1,8 @@
 import pandas as pd
 import logging
 
+logger = logging.getLogger(__name__)
 def sku_to_qtt_map_generator(BS_export_df, use_prod_type=False):
-    logger = logging.getLogger(__name__)
     
     try:
         # Select only needed columns and rename them
