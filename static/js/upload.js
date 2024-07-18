@@ -10,13 +10,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const buttonsContainer = document.getElementById("buttonsContainer");
 
-  // if passed from flask variable is_updated_today is true, show the buttons
-  console.log(isUpdatedToday);
-  if (isUpdatedToday === "true") {
-    buttonsContainer.style.display = "block";
-  } else {
-    buttonsContainer.style.display = "none";
+  const uploadInterface = document.getElementById("uploadInterface");
+  const buttonsInterface = document.getElementById("buttonsInterface");
+  const newUploadBtn = document.getElementById("newUploadBtn");
+
+  function showUploadInterface() {
+    uploadInterface.style.display = "block";
+    buttonsInterface.style.display = "none";
   }
+
+  function showButtonsInterface() {
+    uploadInterface.style.display = "none";
+    buttonsInterface.style.display = "block";
+  }
+
+  if (isUpdatedToday) {
+    showButtonsInterface();
+  } else {
+    showUploadInterface();
+  }
+
+  newUploadBtn.addEventListener("click", showUploadInterface);
+
+  // Здесь нужно добавить обработчик успешной загрузки файла,
+  // который будет вызывать showButtonsInterface()
 
   // Add event listener for form submission
   uploadForm.addEventListener("submit", handleFormSubmit);
@@ -56,8 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
       messageElement.innerText = response.message || response.error;
 
       if (response.message) {
-        // Show download and update API buttons on successful upload
-        buttonsContainer.style.display = "block";
+        showButtonsInterface();
       }
     } else {
       messageElement.innerText = "Error uploading file";
@@ -76,5 +92,6 @@ document.addEventListener("DOMContentLoaded", function () {
     paragraph.textContent = msg;
     logMessagesElement.appendChild(paragraph);
     logMessagesElement.scrollTop = logMessagesElement.scrollHeight;
+    console.log(logMessagesElement.innerHTML);
   }
 });

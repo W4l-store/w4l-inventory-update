@@ -15,6 +15,7 @@ import time
 import threading
 from utils.generate_inv_update_files import generate_inv_update_files
 from utils.helpers import is_inv_updated_today
+from utils.helpers import a_ph
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -83,8 +84,13 @@ def process_file(file_path):
 
 @app.route('/download')
 def download_file():
+    zip_files = glob.glob(a_ph('/download/*.zip'))
+    if not zip_files:
+        return jsonify({'error': 'No update files available'})
+    else:
+        file_name = zip_files[0]
 
-    return send_file('update_files.zip', as_attachment=True)
+    return send_file(file_name, as_attachment=True)
 
 @app.route('/update_api', methods=['POST'])
 def update_api():
@@ -102,4 +108,4 @@ def test_connect():
     print('Client connected')
 
 if __name__ == '__main__':
-    socketio.run(app, debug=False, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
