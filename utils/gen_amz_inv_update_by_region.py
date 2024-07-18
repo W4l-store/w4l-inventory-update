@@ -20,6 +20,7 @@ from typing import Dict
 from retrieve_BS_sku_mapping import retrieve_BS_sku_mapping
 from retrieve_pack_of_map import retrieve_pack_of_map
 from sku_to_qtt_map_generator import sku_to_qtt_map_generator
+from update_resources import update_resources
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -39,12 +40,11 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
     BS_sku_to_qtt_map = sku_to_qtt_map_generator(BS_export_df) # {'BS_SKU': 'quantity'}
     BS_sku_mapping = retrieve_BS_sku_mapping(region) # {'seller_sku': 'BS_SKU'}
     pack_of_map = retrieve_pack_of_map(region) # {'seller_sku': 'pack_of'}
-
     amz_sku_to_qtt_map: Dict[str, int] = {}
-
     BS_skus_not_found = set(BS_sku_mapping.values()) - set(BS_sku_to_qtt_map.keys())
     
     logger.warning(f"SKUs not found in Blue System export data: {len(BS_skus_not_found)}")
+
 
     for amz_sku, BS_sku in BS_sku_mapping.items():
 
@@ -70,9 +70,10 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
 def test ():
     BS_export_df = pd.read_csv('../preparing/data/STOCK-STATUS202407098.952568.TXT', sep='\t', encoding='ascii', skiprows=2, dtype=str)
     region = 'US'
+    update_resources()
     result = gen_amz_inv_update_by_region(BS_export_df, region)
-    print(result)
+    print(result.head())
 
 
 
-test()
+# test()

@@ -1,0 +1,58 @@
+# utils/generate_amazon_inv_update_files.py
+
+import pandas as pd
+import logging
+from gen_amz_inv_update_by_region import gen_amz_inv_update_by_region
+import os 
+import zipfile
+
+logger = logging.getLogger(__name__)
+
+amazon_regions = ['US', 'CA', 'MX']
+
+def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
+    try:
+        # Create a ZIP file
+        zip_filename = 'update_files.zip'
+        os.makedirs('../for_download', exist_ok=True)
+        with zipfile.ZipFile(f'../for_download/{zip_filename}', 'w') as zipf:
+            # Generate update files for each Amazon region
+            for region in amazon_regions:
+                update_df = gen_amz_inv_update_by_region(BS_export_df, region)
+                
+                # Create the folder structure
+                folder_path = f'Amazon/{region}'
+                os.makedirs(folder_path, exist_ok=True)
+                
+                # Generate the filename
+                filename = f'amz_inv_update_{region}.txt'
+                file_path = os.path.join(folder_path, filename)
+                
+                # Save the update file
+                update_df.to_csv(file_path, sep='\t', index=False)
+                
+                # Add the file to the ZIP archive
+                zipf.write(file_path, os.path.join('Update files', file_path))
+                
+                # Remove the temporary file
+                os.remove(file_path)
+            
+            # Remove the temporary folder structure
+            for region in amazon_regions:
+                os.rmdir(f'Amazon/{region}')
+            os.rmdir('Amazon')
+        
+        logger.info(f"Inventory update files generated and saved to {zip_filename}")
+    
+    except Exception as e:
+        logger.error(f"Error generating inventory update files: {str(e)}")
+        raise
+
+#test this function in terminal
+def test():
+    BS_export_df = pd.read_csv('../preparing/data/STOCK-STATUS202407098.952568.TXT', sep='\t', encoding='ascii', skiprows=2, dtype=str)
+    generate_inv_update_files(BS_export_df)
+    
+test()
+
+
