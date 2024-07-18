@@ -16,11 +16,12 @@
 import pandas as pd
 import logging
 from typing import Dict
+import json
 
-from retrieve_BS_sku_mapping import retrieve_BS_sku_mapping
-from retrieve_pack_of_map import retrieve_pack_of_map
-from sku_to_qtt_map_generator import sku_to_qtt_map_generator
-from update_resources import update_resources
+from .retrieve_BS_sku_mapping import retrieve_BS_sku_mapping
+from .sku_to_qtt_map_generator import sku_to_qtt_map_generator
+from .helpers import a_ph
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> pd.DataFrame:
     
     logger.info(f"Generating Amazon inventory update for region: {region}")
+
 
     # Validate the region
     allowed_regions = ['US', 'CA', 'MX']
@@ -39,7 +41,11 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
     # Generate required mappings
     BS_sku_to_qtt_map = sku_to_qtt_map_generator(BS_export_df) # {'BS_SKU': 'quantity'}
     BS_sku_mapping = retrieve_BS_sku_mapping(region) # {'seller_sku': 'BS_SKU'}
-    pack_of_map = retrieve_pack_of_map(region) # {'seller_sku': 'pack_of'}
+
+    # read resources/amazon/pack_of_map.json
+    pack_of_map =  json.load(open(a_ph('/resources/amazon/pack_of_map.json'), 'r'))
+
+
     amz_sku_to_qtt_map: Dict[str, int] = {}
     BS_skus_not_found = set(BS_sku_mapping.values()) - set(BS_sku_to_qtt_map.keys())
     
@@ -68,9 +74,8 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
     return amz_inv_update_df
 
 def test ():
-    BS_export_df = pd.read_csv('../preparing/data/STOCK-STATUS202407098.952568.TXT', sep='\t', encoding='ascii', skiprows=2, dtype=str)
+    BS_export_df = pd.read_csv('../resources/user_uploads/BS_stock.TXT', sep='\t', encoding='ascii', skiprows=2, dtype=str)
     region = 'US'
-    update_resources()
     result = gen_amz_inv_update_by_region(BS_export_df, region)
     print(result.head())
 

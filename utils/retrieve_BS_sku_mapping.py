@@ -3,6 +3,7 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 import logging
+from .helpers import a_ph
 
 
 def retrieve_BS_sku_mapping(region, statuses_allowed=['Active', 'Inactive','Incomplete']):
@@ -16,7 +17,7 @@ def retrieve_BS_sku_mapping(region, statuses_allowed=['Active', 'Inactive','Inco
 
 
 
-    source_df = pd.read_csv('../resources/amazon/BS_SKU_mapping/NA_mapping/amz_NA_mapping.csv', dtype=str)
+    source_df = pd.read_csv(a_ph('/resources/amazon/BS_SKU_mapping/NA_mapping/amz_NA_mapping.csv'), dtype=str)
     
     # filter the empty status columns
     source_df = source_df[source_df[status_column].notna()]

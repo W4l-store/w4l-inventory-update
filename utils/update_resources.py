@@ -3,7 +3,8 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 import logging
-
+from .helpers import a_ph
+import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -15,10 +16,10 @@ def update_resources():
 
 def update_amz_NA_mapping():
     logging.info('Starting update_amz_NA_mapping function')
-    folder_path = '../resources/amazon/BS_SKU_mapping/NA_mapping'
+    folder_path = a_ph('/resources/amazon/BS_SKU_mapping/NA_mapping')
 
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_file("../credentials/sheets_api_cred.json", scopes=scopes)
+    creds = Credentials.from_service_account_file(a_ph("credentials/sheets_api_cred.json"), scopes=scopes)
     client = gspread.authorize(creds)
 
     sheet_id = "1ZMzIMn7CzV_tUJSfXguHYLh3fkkgHVh_0u2NBWCzEAQ"
@@ -34,14 +35,14 @@ def update_amz_NA_mapping():
     source_worksheet = workbook.worksheet(source_worksheet_name)
     records = source_worksheet.get_all_records()
     source_df = pd.DataFrame(records, dtype=str)
-    source_df.to_csv(f'{folder_path}/amz_NA_mapping.csv', index=False)
+    source_df.to_csv(os.path.join(folder_path, 'amz_NA_mapping.csv'), index=False)
     logging.info('Finished update_amz_NA_mapping function')
 
 # test run 
 def test():
     update_resources()
 
-test()
+# test()
 
 
 
