@@ -5,7 +5,7 @@ from google.oauth2.service_account import Credentials
 import logging
 
 
-def retrieve_BS_sku_mapping(region, use_local=True, statuses_allowed=['Active', 'Inactive','Incomplete']):
+def retrieve_BS_sku_mapping(region, use_local=False, statuses_allowed=['Active', 'Inactive','Incomplete']):
 
     allowed_values = ['US', 'CA', 'MX']
     if region not in allowed_values:
@@ -18,7 +18,7 @@ def retrieve_BS_sku_mapping(region, use_local=True, statuses_allowed=['Active', 
         source_df = pd.read_csv('preparing/data/all_listings_mapping_NA.csv', dtype=str)
     else:
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_file("credentials/sheets_api_cred.json", scopes=scopes)
+        creds = Credentials.from_service_account_file("../credentials/sheets_api_cred.json", scopes=scopes)
         client = gspread.authorize(creds)
 
         sheet_id = "1ZMzIMn7CzV_tUJSfXguHYLh3fkkgHVh_0u2NBWCzEAQ"
@@ -26,7 +26,7 @@ def retrieve_BS_sku_mapping(region, use_local=True, statuses_allowed=['Active', 
 
         worksheet_list = map(lambda x: x.title, workbook.worksheets())
         source_worksheet_name = "final_NA_mapping"
-
+        
         if source_worksheet_name not in worksheet_list:
             raise ValueError(f"Worksheet {source_worksheet_name} not found in the google sheet")
         # get the worksheet to df 

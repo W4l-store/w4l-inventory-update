@@ -36,14 +36,19 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
         raise ValueError('Invalid region')
 
     # Generate required mappings
-    BS_sku_to_qtt_map = sku_to_qtt_map_generator(BS_export_df)
-    BS_sku_mapping = retrieve_BS_sku_mapping(region)
-    pack_of_map = retrieve_pack_of_map(region)
+    BS_sku_to_qtt_map = sku_to_qtt_map_generator(BS_export_df) # {'BS_SKU': 'quantity'}
+    BS_sku_mapping = retrieve_BS_sku_mapping(region) # {'seller_sku': 'BS_SKU'}
+    pack_of_map = retrieve_pack_of_map(region) # {'seller_sku': 'pack_of'}
 
     amz_sku_to_qtt_map: Dict[str, int] = {}
+
+    BS_skus_not_found = set(BS_sku_mapping.values()) - set(BS_sku_to_qtt_map.keys())
+    
+    logger.warning(f"SKUs not found in Blue System export data: {len(BS_skus_not_found)}")
+
     for amz_sku, BS_sku in BS_sku_mapping.items():
+
         if BS_sku not in BS_sku_to_qtt_map:
-            logger.warning(f"SKU {BS_sku} not found in BS export file")
             continue
         
         BS_qtt = BS_sku_to_qtt_map.get(BS_sku, 0)
@@ -62,12 +67,12 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
     logger.info(f"Generated inventory update data for {len(amz_inv_update_df)} SKUs")
     return amz_inv_update_df
 
-def test (){
+def test ():
     BS_export_df = pd.read_csv('../preparing/data/STOCK-STATUS202407098.952568.TXT', sep='\t', encoding='ascii', skiprows=2, dtype=str)
     region = 'US'
     result = gen_amz_inv_update_by_region(BS_export_df, region)
     print(result)
 
-}
+
 
 test()
