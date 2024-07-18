@@ -17,8 +17,7 @@ amazon_regions = ['US', 'CA', 'MX']
 
 def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
     try:
-        update_resources()
-
+        update_resources() 
         # delete old ZIP file
         zip_files = glob.glob(a_ph('/download/*.zip'))
 

@@ -14,6 +14,7 @@ import zipfile
 import time
 import threading
 from utils.generate_inv_update_files import generate_inv_update_files
+from utils.helpers import is_inv_updated_today
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -24,9 +25,11 @@ class SocketIOHandler(SocketHandler):
     def emit(self, record):
         socketio.emit('log_message', record.getMessage())
 
+# Configure root logger
+logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().addHandler(SocketIOHandler('localhost', 9000))
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(SocketIOHandler('localhost', 9000))
 
 # Configuration
 UPLOAD_FOLDER = 'resources/user_uploads/'
@@ -40,11 +43,14 @@ def allowed_file(filename):
 
 @app.route('/', methods=['GET'])
 def main_page():
+    is_updated_today = is_inv_updated_today()
     
-    return render_template('upload.html')
+    return render_template('upload.html', is_updated_today= is_updated_today)
 
 @app.route('/', methods=['POST'])
 def upload_file():
+    logger.info(f'{is_inv_updated_today()}///////////')
+
     logger.info('File upload request received')
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'})
@@ -96,4 +102,4 @@ def test_connect():
     print('Client connected')
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=False, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
