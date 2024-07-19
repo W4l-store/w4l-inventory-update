@@ -12,7 +12,9 @@ comm==0.2.2
 cryptography==42.0.8
 debugpy==1.8.2
 decorator==5.1.1
+dnspython==2.6.1
 et-xmlfile==1.1.0
+eventlet==0.36.1
 executing==2.0.1
 Flask==3.0.3
 Flask-SocketIO==5.3.6
@@ -23,7 +25,9 @@ google-auth==2.32.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.1
 googleapis-common-protos==1.63.2
+greenlet==3.0.3
 gspread==6.1.2
+gunicorn==22.0.0
 h11==0.14.0
 httplib2==0.22.0
 idna==3.7
