@@ -109,4 +109,6 @@ def test_connect():
     print('Client connected')
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
+    # socketio.run(app, debug=True, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=8000)
+
