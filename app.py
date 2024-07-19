@@ -13,6 +13,7 @@ import logging
 import zipfile
 import time
 import threading
+from utils.reserving import update_all_BS_sku_reserve
 from utils.generate_inv_update_files import generate_inv_update_files
 from utils.helpers import is_inv_updated_today
 from utils.helpers import a_ph
@@ -75,6 +76,7 @@ def process_file(file_path):
     try:
         BS_export_df = pd.read_csv(file_path, sep='\t', encoding='ascii', skiprows=2, dtype=str)
         generate_inv_update_files(BS_export_df)
+        update_all_BS_sku_reserve()
         return jsonify({'message': 'File processed successfully'})
 
     except Exception as e:
