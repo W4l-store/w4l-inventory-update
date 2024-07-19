@@ -19,7 +19,7 @@ from typing import Dict
 import json
 
 from .retrieve_BS_sku_mapping import retrieve_BS_sku_mapping
-from .sku_to_qtt_map_generator import sku_to_qtt_map_generator
+from .BS_sku_to_qtt_map_generator import BS_sku_to_qtt_map_generator
 from .helpers import a_ph
 
 
@@ -39,7 +39,7 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
         raise ValueError('Invalid region')
 
     # Generate required mappings
-    BS_sku_to_qtt_map = sku_to_qtt_map_generator(BS_export_df) # {'BS_SKU': 'quantity'}
+    BS_sku_to_qtt_map = BS_sku_to_qtt_map_generator(BS_export_df) # {'BS_SKU': 'quantity'}
     BS_sku_mapping = retrieve_BS_sku_mapping(region) # {'seller_sku': 'BS_SKU'}
 
     # read resources/amazon/pack_of_map.json
