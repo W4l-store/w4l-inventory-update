@@ -1,15 +1,21 @@
 import pandas as pd
 import logging
+import json
+from .helpers import a_ph
 
 logger = logging.getLogger(__name__)
 def BS_sku_to_qtt_map_generator(BS_export_df, use_prod_type=False):
+    
     
     try:
         # Select only needed columns and rename them
         BS_export_df = BS_export_df[['CODE', 'NAME', 'AVAIL', 'PROD TYPE']].rename(
             columns={'CODE': 'SKU'}
         )
+
+        double_roles_map = json.load(open(a_ph('/resources/blue_sistem/double_roles_map.json'), 'r'))
         
+
         # Strip whitespace from string columns
         BS_export_df = BS_export_df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
         
@@ -24,6 +30,14 @@ def BS_sku_to_qtt_map_generator(BS_export_df, use_prod_type=False):
 
         # replace negative values with 0
         BS_export_df['AVAIL'] = BS_export_df['AVAIL'].apply(lambda x: 0 if x < 0 else x)
+
+        BS_export_df['NAME'] = BS_export_df['NAME'].str.strip().astype(str).fillna('')
+
+
+        
+
+        BS_export_df['AVAIL'] = BS_export_df.apply(process_avail_value, args=(double_roles_map,), axis=1)
+
         
         # Create base dictionary mapping SKU to AVAIL
         sku_avail_map = dict(zip(BS_export_df['SKU'], BS_export_df['AVAIL']))
@@ -48,6 +62,7 @@ def BS_sku_to_qtt_map_generator(BS_export_df, use_prod_type=False):
             for sku in skus_for_update:
                 sku_avail_map[sku] = prod_type_avail_map[sku]
         
+
         logger.info(f"Successfully created SKU to quantity map with {len(sku_avail_map)} entries")
         return sku_avail_map
     
@@ -58,3 +73,26 @@ def BS_sku_to_qtt_map_generator(BS_export_df, use_prod_type=False):
         logger.error(f"An unexpected error occurred while processing the BS file: {e}")
         raise
 
+def process_avail_value(row, double_roles_map):
+            name = row['NAME']
+            
+            qtt = row['AVAIL']
+            if qtt > 0:
+
+                if  name in double_roles_map :  
+                    if qtt % double_roles_map[name] == 0:
+                        return int(qtt / double_roles_map[name])
+                    else:
+                        logger.warning(f"Please check the value of '{name}' in double_roles_map. Current value is {double_roles_map[name]}")
+                        return qtt
+                elif pd.isna(name):
+                    return 0
+                else:
+                     logger.error(f"NAME {name} not found in double_roles_map")
+                     if qtt % 2 == 0:
+                        return int(qtt / 2)
+                     else:
+                        return qtt
+                    
+            else:
+                return 0
