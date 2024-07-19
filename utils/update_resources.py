@@ -9,6 +9,7 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from dotenv import load_dotenv
 
 def update_resources():
     update_from_google_sheet()
@@ -48,12 +49,44 @@ def update_double_roles_map(update_double_roles_map_df):
 
 def get_workbook(sheet_id = "1ZMzIMn7CzV_tUJSfXguHYLh3fkkgHVh_0u2NBWCzEAQ"):
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_file(a_ph("credentials/sheets_api_cred.json"), scopes=scopes)
+    creds = get_sheets_api_credentials()
     client = gspread.authorize(creds)
     workbook = client.open_by_key(sheet_id)
     return workbook
 
 
+def get_sheets_api_credentials():
+    # Load environment variables
+    load_dotenv()
+
+    # Create a dictionary with the credentials
+    cred_dict = {
+        "type": "service_account",
+        "project_id": "w4l-inventory-update",
+        "private_key_id": os.getenv("GOOGLE_PRIVATE_KEY_ID"),
+        "private_key": os.getenv("GOOGLE_PRIVATE_KEY"),
+        "client_email": os.getenv("GOOGLE_CLIENT_EMAIL"),
+        "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": os.getenv("GOOGLE_CLIENT_X509_CERT_URL"),
+        "universe_domain": "googleapis.com"
+    }
+
+    # Create a temporary file to store the credentials
+    temp_cred_file = a_ph('temp_credentials.json')
+    with open(temp_cred_file, 'w') as f:
+        json.dump(cred_dict, f)
+
+    # Get the credentials from the temporary file
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = Credentials.from_service_account_file(temp_cred_file, scopes=scopes)
+
+    # Remove the temporary file
+    os.remove(temp_cred_file)
+
+    return creds
 
 
 
