@@ -14,6 +14,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const buttonsInterface = document.getElementById("buttonsInterface");
   const newUploadBtn = document.getElementById("newUploadBtn");
 
+  let uniqueMassages = [];
+
   function showUploadInterface() {
     uploadInterface.style.display = "block";
     buttonsInterface.style.display = "none";
@@ -87,11 +89,37 @@ document.addEventListener("DOMContentLoaded", function () {
    * Handle incoming log messages from Socket.IO
    * @param {string} msg - The log message
    */
+
   function handleLogMessage(msg) {
-    const paragraph = document.createElement("p");
-    paragraph.textContent = msg;
-    logMessagesElement.appendChild(paragraph);
+    // Check if this is an error message and if it's the same as the last one
+    if (uniqueMassages.includes(msg.text)) {
+      return;
+    } else {
+      uniqueMassages.push(msg.text);
+    }
+
+    const alertDiv = document.createElement("div");
+    alertDiv.role = "alert";
+
+    // Determine the alert class based on the message type
+    switch (msg.type) {
+      case "error":
+        alertDiv.className = "alert alert-danger";
+
+        break;
+      case "warning":
+        alertDiv.className = "alert alert-warning";
+        break;
+      case "info":
+        alertDiv.className = "alert alert-info";
+        break;
+      default:
+        alertDiv.className = "alert alert-secondary";
+    }
+
+    alertDiv.textContent = msg.text;
+
+    logMessagesElement.appendChild(alertDiv);
     logMessagesElement.scrollTop = logMessagesElement.scrollHeight;
-    console.log(logMessagesElement.innerHTML);
   }
 });

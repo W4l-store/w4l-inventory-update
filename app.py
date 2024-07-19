@@ -24,7 +24,7 @@ socketio = SocketIO(app)
 # Configure logging
 class SocketIOHandler(SocketHandler):
     def emit(self, record):
-        socketio.emit('log_message', record.getMessage())
+        socketio.emit('log_message', {"text": record.getMessage(), "type": record.levelname.lower()})
 
 # Configure root logger
 logging.getLogger().setLevel(logging.INFO)
@@ -50,7 +50,6 @@ def main_page():
 
 @app.route('/', methods=['POST'])
 def upload_file():
-    logger.info(f'{is_inv_updated_today()}///////////')
 
     logger.info('File upload request received')
     if 'file' not in request.files:
