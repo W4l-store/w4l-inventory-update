@@ -64,7 +64,7 @@ def process_avail_value(row, double_roles_map):
                 elif pd.isna(name) or name == '' or name == 'nan':
                     return 0
                 else:
-                     logger.error(f"NAME {name} not found in double_roles_map")
+                     logger.warning(f"NAME {name} not found in double_roles_map")
                      if qtt % 2 == 0:
                         return int(qtt / 2)
                      else:
