@@ -13,7 +13,7 @@ from .helpers import a_ph
 
 logger = logging.getLogger(__name__)
 
-amazon_regions = ['US', 'CA', 'MX']
+amazon_regions = ["PL", "FR", "SE", "US", "NL", "UK", "MX", "CA", "BE", "ES", "IT", "DE"]
 
 def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
     try:
@@ -35,7 +35,7 @@ def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
                 update_df = gen_amz_inv_update_by_region(BS_export_df, region)
                 
                 # Create the folder structure
-                folder_path = f'Amazon/{region}'
+                folder_path = f'Amazon/'
                 os.makedirs(folder_path, exist_ok=True)
                 
                 # Generate the filename
@@ -51,9 +51,7 @@ def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
                 # Remove the temporary file
                 os.remove(file_path)
             
-            # Remove the temporary folder structure
-            for region in amazon_regions:
-                os.rmdir(f'Amazon/{region}')
+            
             os.rmdir('Amazon')
         
         logger.info(f"Inventory update files generated and saved to {zip_filename}")

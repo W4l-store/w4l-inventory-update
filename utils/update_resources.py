@@ -17,16 +17,16 @@ def update_resources():
     logger.info("Resources updated ")
 
 def update_from_google_sheet():
-    amz_NA_mapping_worksheet_name = "final_NA_mapping"
+    amz_sku_mapping_worksheet_name = "amazon_sku_mapping"
     update_double_roles_map_worksheet_name = "double_roles_map"
 
     workbook = get_workbook()
 
 
-    amz_NA_mapping_df = pd.DataFrame(get_worksheet_df_by_name(workbook, amz_NA_mapping_worksheet_name).get_all_records())
+    amz_sku_mapping_df = pd.DataFrame(get_worksheet_df_by_name(workbook, amz_sku_mapping_worksheet_name).get_all_records())
     
     
-    update_amz_NA_mapping(amz_NA_mapping_df)
+    update_amz_sku_mapping(amz_sku_mapping_df)
 
     update_double_roles_map_df = pd.DataFrame(get_worksheet_df_by_name(workbook, update_double_roles_map_worksheet_name).get_all_records())
     update_double_roles_map(update_double_roles_map_df)
@@ -35,9 +35,9 @@ def update_from_google_sheet():
 
 
 
-def update_amz_NA_mapping(amz_NA_mapping_df: pd.DataFrame):
+def update_amz_sku_mapping(amz_NA_mapping_df: pd.DataFrame):
    
-    amz_NA_mapping_df.to_csv(os.path.join(a_ph('/resources/amazon/BS_SKU_mapping/NA_mapping'), 'amz_NA_mapping.csv'), index=False)
+    amz_NA_mapping_df.to_csv(os.path.join(a_ph('/resources/amazon/BS_SKU_mapping'), 'amz_sku_mapping.csv'), index=False)
     logger.info("Updated NA mapping")
 
 def update_double_roles_map(update_double_roles_map_df):

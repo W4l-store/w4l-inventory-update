@@ -8,7 +8,7 @@ from .helpers import a_ph
 
 def retrieve_BS_sku_mapping(region, statuses_allowed=['Active', 'Inactive','Incomplete']):
 
-    allowed_values = ['US', 'CA', 'MX']
+    allowed_values = ["PL", "FR", "SE", "US", "NL", "UK", "MX", "CA", "BE", "ES", "IT", "DE"]
     if region not in allowed_values:
         raise ValueError(f"Invalid region '{region}'. Allowed values are {allowed_values}.")
     
@@ -17,7 +17,7 @@ def retrieve_BS_sku_mapping(region, statuses_allowed=['Active', 'Inactive','Inco
 
 
 
-    source_df = pd.read_csv(a_ph('/resources/amazon/BS_SKU_mapping/NA_mapping/amz_NA_mapping.csv'), dtype=str)
+    source_df = pd.read_csv(a_ph('/resources/amazon/BS_SKU_mapping/amz_sku_mapping.csv'), dtype=str)
     
     # filter the empty status columns
     source_df = source_df[source_df[status_column].notna()]

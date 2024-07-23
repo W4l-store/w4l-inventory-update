@@ -33,7 +33,7 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
 
 
     # Validate the region
-    allowed_regions = ['US', 'CA', 'MX']
+    allowed_regions = ["PL", "FR", "SE", "US", "NL", "UK", "MX", "CA", "BE", "ES", "IT", "DE"]
     if region not in allowed_regions:
         logger.error(f"Invalid region: {region}")
         raise ValueError('Invalid region')
