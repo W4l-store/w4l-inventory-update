@@ -20,7 +20,7 @@ import json
 
 from .retrieve_BS_sku_mapping import retrieve_BS_sku_mapping
 from .BS_sku_to_qtt_map_generator import BS_sku_to_qtt_map_generator
-from .helpers import a_ph
+from .helpers import a_ph, get_back_of_map_by_marketplace
 
 
 # Set up logging
@@ -66,6 +66,13 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
             qtt = BS_qtt
 
         amz_sku_to_qtt_map[amz_sku] = qtt
+    
+    # apply the pack of map to the amz_sku_to_qtt_map
+    pack_of_map =  get_back_of_map_by_marketplace('amazon')
+    for amz_sku, pack_of in pack_of_map.items():
+        if amz_sku in amz_sku_to_qtt_map:
+            amz_sku_to_qtt_map[amz_sku] = amz_sku_to_qtt_map[amz_sku] // pack_of
+
 
     # Create a pandas DataFrame from the mapping
     amz_inv_update_df = pd.DataFrame(list(amz_sku_to_qtt_map.items()), columns=['sku', 'quantity'])

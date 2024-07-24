@@ -2,6 +2,7 @@ import os
 from flask import current_app
 import time
 import glob
+import pandas as pd
 
 def a_ph(relative_path):
     """
@@ -42,5 +43,14 @@ def is_inv_updated_today():
     
 
 
-    
-    
+def get_back_of_map_by_marketplace(marketplace: str) -> dict:
+    #amazon_sku	amazon_delimiter	walmart_sku	walmart_delimiter	wayfair_sku	wayfair_delimiter	houzz_sku	houzz_delimiter
+    supported_marketplaces = ['amazon', 'walmart', 'wayfair', 'houzz']
+    if marketplace not in supported_marketplaces:
+        raise ValueError(f"Invalid marketplace: {marketplace}")
+    # resources/pack_of_map.csv
+    pack_of_map = pd.read_csv(a_ph('/resources/pack_of_map.csv'),dtype=str )
+    pack_of_map = pack_of_map[[f'{marketplace}_sku', f'{marketplace}_delimiter']]
+    pack_of_map[f'{marketplace}_delimiter'] = pack_of_map[f'{marketplace}_delimiter'].astype(int)
+    pack_of_map_dict = pack_of_map.set_index(f'{marketplace}_sku').to_dict()[f'{marketplace}_delimiter']
+    return pack_of_map_dict
