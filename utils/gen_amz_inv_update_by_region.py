@@ -18,7 +18,6 @@ import logging
 from typing import Dict
 import json
 
-from .retrieve_BS_sku_mapping import retrieve_BS_sku_mapping
 from .BS_sku_to_qtt_map_generator import BS_sku_to_qtt_map_generator
 from .helpers import a_ph, get_back_of_map_by_marketplace
 
@@ -42,8 +41,6 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
     BS_sku_to_qtt_map = BS_sku_to_qtt_map_generator(BS_export_df) # {'BS_SKU': 'quantity'}
     BS_sku_mapping = retrieve_BS_sku_mapping(region) # {'seller_sku': 'BS_SKU'}
 
-    # read resources/amazon/pack_of_map.json
-    pack_of_map =  json.load(open(a_ph('/resources/amazon/pack_of_map.json'), 'r'))
 
 
     amz_sku_to_qtt_map: Dict[str, int] = {}
@@ -59,13 +56,7 @@ def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> p
         
         BS_qtt = BS_sku_to_qtt_map.get(BS_sku, 0)
 
-        # Calculate quantity based on pack size
-        if amz_sku in pack_of_map:
-            qtt = BS_qtt // pack_of_map.get(amz_sku, 1)
-        else:
-            qtt = BS_qtt
-
-        amz_sku_to_qtt_map[amz_sku] = qtt
+        amz_sku_to_qtt_map[amz_sku] = BS_qtt
     
     # apply the pack of map to the amz_sku_to_qtt_map
     pack_of_map =  get_back_of_map_by_marketplace('amazon')
@@ -88,4 +79,32 @@ def test ():
 
 
 
-# test()
+
+
+def retrieve_BS_sku_mapping(region, statuses_allowed=['Active', 'Inactive','Incomplete']):
+
+    allowed_values = ["PL", "FR", "SE", "US", "NL", "UK", "MX", "CA", "BE", "ES", "IT", "DE"]
+    if region not in allowed_values:
+        raise ValueError(f"Invalid region '{region}'. Allowed values are {allowed_values}.")
+    
+    status_column = f'status_{region}'
+    fulfillment = f'fulfillment_{region}'
+
+
+
+    source_df = pd.read_csv(a_ph('/resources/amazon/amz_sku_mapping.csv'), dtype=str)
+    
+    # filter the empty status columns
+    source_df = source_df[source_df[status_column].notna()]
+    source_df = source_df[source_df[status_column] != '']
+    source_df = source_df[source_df[status_column].isin(statuses_allowed)]
+    # filter the BS_SKU columns from nan and empty values
+    source_df = source_df[source_df['BS_SKU'].notna()]
+    source_df = source_df[source_df['BS_SKU'] != '']
+    # filter the fulfillment column to only "DEFAULT" values
+    source_df = source_df[source_df[fulfillment] == 'DEFAULT']
+
+    # to dict map
+    amazon_sku_to_BS_sku = dict(zip(source_df['seller_sku'], source_df['BS_SKU']))
+    
+    return amazon_sku_to_BS_sku

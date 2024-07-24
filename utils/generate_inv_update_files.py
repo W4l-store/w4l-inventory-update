@@ -1,4 +1,4 @@
-# utils/generate_amazon_inv_update_files.py
+# utils/generate_inv_update_files.py
 
 import pandas as pd
 import logging
@@ -8,12 +8,14 @@ import time
 import glob
 
 from .gen_amz_inv_update_by_region import gen_amz_inv_update_by_region
+from .wayfair import gen_wayfair_inv_update_by_region
 from .update_resources import update_resources
 from .helpers import a_ph
 
 logger = logging.getLogger(__name__)
 
 amazon_regions = ["PL", "FR", "SE", "US", "NL", "UK", "MX", "CA", "BE", "ES", "IT", "DE"]
+wayfair_regions = ["US", "CA"]
 
 def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
     try:
@@ -51,8 +53,29 @@ def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
                 # Remove the temporary file
                 os.remove(file_path)
             
+            # Generate update files for each Wayfair region
+            for region in wayfair_regions:
+                update_df = gen_wayfair_inv_update_by_region(BS_export_df, region)
+                
+                # Create the folder structure
+                folder_path = f'Wayfair/'
+                os.makedirs(folder_path, exist_ok=True)
+                
+                # Generate the filename
+                filename = f'wayfair_inv_update_{region}.csv'
+                file_path = os.path.join(folder_path, filename)
+                
+                # Save the update file
+                update_df.to_csv(file_path, index=False)
+                
+                # Add the file to the ZIP archive
+                zipf.write(file_path, os.path.join('Update files', file_path))
+                
+                # Remove the temporary file
+                os.remove(file_path)
             
             os.rmdir('Amazon')
+            os.rmdir('Wayfair')
         
         logger.info(f"Inventory update files generated and saved to {zip_filename}")
     
@@ -66,5 +89,3 @@ def test():
     generate_inv_update_files(BS_export_df)
     
 # test()
-
-

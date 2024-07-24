@@ -51,6 +51,17 @@ def get_back_of_map_by_marketplace(marketplace: str) -> dict:
     # resources/pack_of_map.csv
     pack_of_map = pd.read_csv(a_ph('/resources/pack_of_map.csv'),dtype=str )
     pack_of_map = pack_of_map[[f'{marketplace}_sku', f'{marketplace}_delimiter']]
+    # drop na values
+    pack_of_map = pack_of_map.dropna()
+
     pack_of_map[f'{marketplace}_delimiter'] = pack_of_map[f'{marketplace}_delimiter'].astype(int)
     pack_of_map_dict = pack_of_map.set_index(f'{marketplace}_sku').to_dict()[f'{marketplace}_delimiter']
     return pack_of_map_dict
+
+# приминить pack_of_map by marketplace
+def apply_pack_of_map(sku_to_qtt_map, marketplace):
+    pack_of_map = get_back_of_map_by_marketplace(marketplace)
+    for amz_sku, pack_of in pack_of_map.items():
+        if amz_sku in sku_to_qtt_map:
+            sku_to_qtt_map[amz_sku] = sku_to_qtt_map[amz_sku] // pack_of
+    return sku_to_qtt_map
