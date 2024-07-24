@@ -75,8 +75,3 @@ def retrieve_wayfair_sku_mapping(region):
     
     return wayfair_sku_to_BS_sku
 
-def test():
-    BS_export_df = pd.read_csv('../resources/user_uploads/BS_stock.TXT', sep='\t', encoding='ascii', skiprows=2, dtype=str)
-    region = 'US'
-    result = gen_wayfair_inv_update_by_region(BS_export_df, region)
-    print(result.head())

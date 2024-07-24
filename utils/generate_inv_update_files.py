@@ -9,6 +9,7 @@ import glob
 
 from .gen_amz_inv_update_by_region import gen_amz_inv_update_by_region
 from .wayfair import gen_wayfair_inv_update_by_region
+from .walmart import gen_walmart_inv_update_by_region
 from .update_resources import update_resources
 from .helpers import a_ph
 
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 amazon_regions = ["PL", "FR", "SE", "US", "NL", "UK", "MX", "CA", "BE", "ES", "IT", "DE"]
 wayfair_regions = ["US", "CA"]
+walmart_regions = ["US", "CA"]
 
 def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
     try:
@@ -74,8 +76,30 @@ def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
                 # Remove the temporary file
                 os.remove(file_path)
             
+            # Generate update files for each Walmart region
+            for region in walmart_regions:
+                update_df = gen_walmart_inv_update_by_region(BS_export_df, region)
+                
+                # Create the folder structure
+                folder_path = f'Walmart/'
+                os.makedirs(folder_path, exist_ok=True)
+                
+                # Generate the filename
+                filename = f'walmart_inv_update_{region}.csv'
+                file_path = os.path.join(folder_path, filename)
+                
+                # Save the update file
+                update_df.to_csv(file_path, index=False)
+                
+                # Add the file to the ZIP archive
+                zipf.write(file_path, os.path.join('Update files', file_path))
+                
+                # Remove the temporary file
+                os.remove(file_path)
+            
             os.rmdir('Amazon')
             os.rmdir('Wayfair')
+            os.rmdir('Walmart')
         
         logger.info(f"Inventory update files generated and saved to {zip_filename}")
     
