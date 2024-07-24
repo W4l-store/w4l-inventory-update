@@ -2,7 +2,7 @@
 bind = "0.0.0.0:8000"
 
 # Single worker process as we have only one client
-workers = 2
+workers = 3
 
 # Use eventlet worker class for Socket.IO support
 worker_class = 'eventlet'
@@ -34,7 +34,7 @@ limit_request_field_size = 0
 # # worker_tmp_dir = '/dev/shm'
 
 # # Socket.IO specific settings
-worker_connections = 1000
+worker_connections = 2000
 
 
 

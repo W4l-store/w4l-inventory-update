@@ -1,40 +1,40 @@
 document.addEventListener("DOMContentLoaded", function () {
   const uploadForm = document.getElementById("uploadForm");
   const messageElement = document.getElementById("message");
-  const loadingElement = document.getElementById("loading");
   const logMessagesElement = document.getElementById("logMessages");
   const uploadInterface = document.getElementById("uploadInterface");
+  const loadingInterface = document.getElementById("loadingInterface");
   const buttonsInterface = document.getElementById("buttonsInterface");
   const newUploadBtn = document.getElementById("newUploadBtn");
-
-  let uniqueMessages = [];
+  const downloadBtn = document.getElementById("downloadBtn");
 
   function showUploadInterface() {
     uploadInterface.style.display = "block";
+    loadingInterface.style.display = "none";
+    buttonsInterface.style.display = "none";
+  }
+
+  function showLoadingInterface() {
+    uploadInterface.style.display = "none";
+    loadingInterface.style.display = "block";
     buttonsInterface.style.display = "none";
   }
 
   function showButtonsInterface() {
     uploadInterface.style.display = "none";
+    loadingInterface.style.display = "none";
     buttonsInterface.style.display = "block";
   }
 
-  if (isUpdatedToday && !isProcessing) {
-    showButtonsInterface();
-  } else {
+  function initializeInterface() {
+    checkTaskStatus(true);
+  }
+
+  newUploadBtn.addEventListener("click", function () {
     showUploadInterface();
-  }
-
-  if (isProcessing) {
-    loadingElement.style.display = "block";
-    checkTaskStatus();
-  }
-
-  newUploadBtn.addEventListener("click", showUploadInterface);
-  uploadForm.addEventListener("submit", handleFormSubmit);
-
-  const socket = io(window.location.origin);
-  socket.on("log_message", handleLogMessage);
+    logMessagesElement.innerHTML = "";
+    uniqueMessages = [];
+  });
 
   function handleFormSubmit(e) {
     e.preventDefault();
@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/", true);
     xhr.onload = handleXhrResponse;
-    loadingElement.style.display = "block";
+    showLoadingInterface();
     xhr.send(formData);
   }
 
@@ -53,66 +53,102 @@ document.addEventListener("DOMContentLoaded", function () {
       if (response.message) {
         checkTaskStatus();
       } else {
-        loadingElement.style.display = "none";
+        showUploadInterface();
       }
     } else {
       messageElement.innerText = "Error uploading file";
-      loadingElement.style.display = "none";
+      showUploadInterface();
     }
   }
 
   function handleLogMessage(msg) {
-    console.log(msg);
-    if (uniqueMessages.includes(msg.text)) {
-      return;
-    } else {
+    if (!uniqueMessages.includes(msg.text)) {
       uniqueMessages.push(msg.text);
+      const alertDiv = document.createElement("div");
+      alertDiv.role = "alert";
+      alertDiv.className = `alert alert-${
+        msg.type === "error"
+          ? "danger"
+          : msg.type === "warning"
+          ? "warning"
+          : msg.type === "info"
+          ? "info"
+          : "secondary"
+      }`;
+      alertDiv.textContent = msg.text;
+      logMessagesElement.appendChild(alertDiv);
+      logMessagesElement.scrollTop = logMessagesElement.scrollHeight;
     }
-
-    const alertDiv = document.createElement("div");
-    alertDiv.role = "alert";
-
-    switch (msg.type) {
-      case "error":
-        alertDiv.className = "alert alert-danger";
-        break;
-      case "warning":
-        alertDiv.className = "alert alert-warning";
-        break;
-      case "info":
-        alertDiv.className = "alert alert-info";
-        break;
-      default:
-        alertDiv.className = "alert alert-secondary";
-    }
-
-    alertDiv.textContent = msg.text;
-    logMessagesElement.appendChild(alertDiv);
-    logMessagesElement.scrollTop = logMessagesElement.scrollHeight;
   }
 
-  function checkTaskStatus() {
+  function checkTaskStatus(isInitial = false) {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", "/task_status", true);
     xhr.onload = function () {
       if (this.status === 200) {
         const response = JSON.parse(this.responseText);
-        if (response.state === "SUCCESS") {
-          messageElement.innerText =
-            response.result || "File processed successfully";
-          loadingElement.style.display = "none";
-          showButtonsInterface();
-        } else if (response.state === "FAILURE") {
-          messageElement.innerText = `Error: ${response.result}`;
-          loadingElement.style.display = "none";
-        } else if (response.state === "PROCESSING") {
-          messageElement.innerText = "Processing...";
-          setTimeout(checkTaskStatus, 2000);
-        } else {
-          loadingElement.style.display = "none";
+        switch (response.state) {
+          case "SUCCESS":
+            messageElement.innerText =
+              response.result || "File processed successfully";
+            showButtonsInterface();
+            updateDownloadButtonDate();
+            break;
+          case "FAILURE":
+            messageElement.innerText = `Error: ${response.result}`;
+            showUploadInterface();
+            break;
+          case "PROCESSING":
+            messageElement.innerText = "Processing...";
+            showLoadingInterface();
+            setTimeout(checkTaskStatus, 2000);
+            break;
+          case "NO_TASK":
+            if (isInitial) {
+              if (isUpdatedToday) {
+                showButtonsInterface();
+              } else {
+                showUploadInterface();
+              }
+            } else {
+              showUploadInterface();
+            }
+            break;
         }
       }
     };
     xhr.send();
   }
+
+  function updateDownloadButtonDate() {
+    const today = new Date();
+    const dateString = today.toISOString().split("T")[0];
+    downloadBtn.textContent = `Download inventory update files (${dateString})`;
+  }
+
+  const socket = io({
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    timeout: 20000,
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Disconnected from server, trying to reconnect...");
+  });
+
+  socket.on("connect", () => {
+    console.log("Connected to server");
+  });
+
+  socket.on("log_message", handleLogMessage);
+
+  let uniqueMessages = [];
+
+  initializeInterface();
+
+  uploadForm.addEventListener("submit", handleFormSubmit);
+
+  updateDownloadButtonDate();
 });

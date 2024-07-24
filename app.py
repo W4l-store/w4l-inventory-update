@@ -7,8 +7,7 @@ from logging.handlers import SocketHandler
 import glob
 import csv
 import logging
-import zipfile
-import time
+
 import threading
 from datetime import datetime
 import uuid
@@ -16,9 +15,14 @@ import uuid
 from utils.reserving import update_all_BS_sku_reserve
 from utils.generate_inv_update_files import generate_inv_update_files
 from utils.helpers import is_inv_updated_today, a_ph
+import eventlet
+
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app, ping_timeout=60, ping_interval=25)
+
+eventlet.monkey_patch()
+
 
 # Configure logging
 class SocketIOHandler(SocketHandler):
@@ -38,7 +42,7 @@ PIN_CODE = "{{1234}}"
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Global variable to track the current task
-current_task = None
+current_task = {'status': 'NO_TASK', 'result': ''}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -47,14 +51,18 @@ def allowed_file(filename):
 def main_page():
     is_updated_today = is_inv_updated_today()
     global current_task
-    is_processing = current_task is not None
+    if current_task['status'] == 'PROCESSING':
+        is_processing = True
+    else:
+        is_processing = False
+
     return render_template('upload.html', is_updated_today=is_updated_today, is_processing=is_processing)
 
 @app.route('/', methods=['POST'])
 def upload_file():
     global current_task
     logger.info('File upload request received')
-    if current_task:
+    if current_task['status'] == 'PROCESSING':
         return jsonify({'error': 'A task is already in progress'})
     
     if 'file' not in request.files:
@@ -76,6 +84,7 @@ def upload_file():
 def process_file_task(file_path, task_id):
     global current_task
     try:
+
         BS_export_df = pd.read_csv(file_path, sep='\t', encoding='ascii', skiprows=2, dtype=str)
         generate_inv_update_files(BS_export_df)
         update_all_BS_sku_reserve()
@@ -104,5 +113,33 @@ def download_file():
     file_name = zip_files[0]
     return send_file(file_name, as_attachment=True)
 
+@socketio.on_error_default
+def default_error_handler(e):
+    print(f'An error occurred: {e}')
+    socketio.emit('error', {'message': 'An error occurred on the server'})
+
+@socketio.on('connect')
+def handle_connect():
+    socketio.server.eio.generate_id = lambda: uuid.uuid4().hex
+
+def clean_sessions():
+    while True:
+        socketio.sleep(3600)  # Очистка каждый час
+        socketio.server.eio.clean_timers()
+
+socketio.start_background_task(clean_sessions)
+
+@socketio.on('connect')
+def handle_connect():
+    print(f'Client connected: {request.sid} from {request.remote_addr}')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f'Client disconnected: {request.sid} from {request.remote_addr}')
+
+
+
 if __name__ == '__main__':
-    socketio.run(app, host='127.0.0.1', port=8000)
+    socketio.run(app, host='127.0.0.1', port=8000, debug=True, use_reloader=False)
+
+
