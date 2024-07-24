@@ -13,6 +13,8 @@ import logging
 import zipfile
 import time
 import threading
+from celery import Celery
+
 from utils.reserving import update_all_BS_sku_reserve
 from utils.generate_inv_update_files import generate_inv_update_files
 from utils.helpers import is_inv_updated_today
@@ -21,6 +23,8 @@ from utils.helpers import a_ph
 app = Flask(__name__)
 socketio = SocketIO(app)
 
+celery = Celery(app.name, broker='redis://localhost:6379/0')
+celery.conf.update(app.config)
 
 # Configure logging
 class SocketIOHandler(SocketHandler):
@@ -66,13 +70,13 @@ def upload_file():
         # Save the file
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], "BS_stock.TXT")
         file.save(file_path)
-        return process_file(file_path)
+        task = process_file_task.delay(file_path)
+        return jsonify({'message': 'File uploaded and processing started', 'task_id': task.id})
 
 
 
-
-def process_file(file_path):
-
+@celery.task
+def process_file_task(file_path):
     try:
         BS_export_df = pd.read_csv(file_path, sep='\t', encoding='ascii', skiprows=2, dtype=str)
         generate_inv_update_files(BS_export_df)

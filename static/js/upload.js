@@ -72,16 +72,14 @@ document.addEventListener("DOMContentLoaded", function () {
   function handleXhrResponse() {
     if (this.status === 200) {
       const response = JSON.parse(this.responseText);
-      messageElement.innerText = response.message || response.error;
-
-      if (response.message) {
-        showButtonsInterface();
+      if (response.task_id) {
+        checkTaskStatus(response.task_id);
+      } else {
+        messageElement.innerText = response.message || response.error;
       }
     } else {
       messageElement.innerText = "Error uploading file";
     }
-
-    // Hide loading indicator
     loadingElement.style.display = "none";
   }
 
@@ -121,5 +119,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
     logMessagesElement.appendChild(alertDiv);
     logMessagesElement.scrollTop = logMessagesElement.scrollHeight;
+  }
+
+  function checkTaskStatus(taskId) {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", `/task_status/${taskId}`, true);
+    xhr.onload = function () {
+      if (this.status === 200) {
+        const response = JSON.parse(this.responseText);
+        if (response.state === "SUCCESS") {
+          messageElement.innerText = "File processed successfully";
+          showButtonsInterface();
+        } else if (response.state === "FAILURE") {
+          messageElement.innerText = `Error: ${response.status}`;
+        } else {
+          messageElement.innerText = `Processing: ${response.status}`;
+          setTimeout(() => checkTaskStatus(taskId), 2000);
+        }
+      }
+    };
+    xhr.send();
   }
 });
