@@ -10,6 +10,7 @@ import glob
 from .gen_amz_inv_update_by_region import gen_amz_inv_update_by_region
 from .wayfair import gen_wayfair_inv_update_by_region
 from .walmart import gen_walmart_inv_update_by_region
+from .houzz import gen_houzz_inv_update
 from .update_resources import update_resources
 from .helpers import a_ph
 
@@ -97,9 +98,30 @@ def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
                 # Remove the temporary file
                 os.remove(file_path)
             
+            # Generate update file for Houzz
+            update_df = gen_houzz_inv_update(BS_export_df)
+            
+            # Create the folder structure
+            folder_path = f'Houzz/'
+            os.makedirs(folder_path, exist_ok=True)
+            
+            # Generate the filename
+            filename = f'houzz_inv_update.csv'
+            file_path = os.path.join(folder_path, filename)
+            
+            # Save the update file
+            update_df.to_csv(file_path, index=False)
+            
+            # Add the file to the ZIP archive
+            zipf.write(file_path, os.path.join('Update files', file_path))
+            
+            # Remove the temporary file
+            os.remove(file_path)
+            
             os.rmdir('Amazon')
             os.rmdir('Wayfair')
             os.rmdir('Walmart')
+            os.rmdir('Houzz')
         
         logger.info(f"Inventory update files generated and saved to {zip_filename}")
     
