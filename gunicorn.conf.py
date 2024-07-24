@@ -2,7 +2,7 @@
 bind = "0.0.0.0:8000"
 
 # Single worker process as we have only one client
-workers = 3
+workers = 2
 
 # Use eventlet worker class for Socket.IO support
 worker_class = 'eventlet'

@@ -1,20 +1,13 @@
-// static/js/upload.js
-
-// Wait for the DOM to be fully loaded
 document.addEventListener("DOMContentLoaded", function () {
-  // Get references to DOM elements
   const uploadForm = document.getElementById("uploadForm");
   const messageElement = document.getElementById("message");
   const loadingElement = document.getElementById("loading");
   const logMessagesElement = document.getElementById("logMessages");
-
-  const buttonsContainer = document.getElementById("buttonsContainer");
-
   const uploadInterface = document.getElementById("uploadInterface");
   const buttonsInterface = document.getElementById("buttonsInterface");
   const newUploadBtn = document.getElementById("newUploadBtn");
 
-  let uniqueMassages = [];
+  let uniqueMessages = [];
 
   function showUploadInterface() {
     uploadInterface.style.display = "block";
@@ -26,84 +19,62 @@ document.addEventListener("DOMContentLoaded", function () {
     buttonsInterface.style.display = "block";
   }
 
-  if (isUpdatedToday) {
+  if (isUpdatedToday && !isProcessing) {
     showButtonsInterface();
   } else {
     showUploadInterface();
   }
 
+  if (isProcessing) {
+    loadingElement.style.display = "block";
+    checkTaskStatus();
+  }
+
   newUploadBtn.addEventListener("click", showUploadInterface);
-
-  // Здесь нужно добавить обработчик успешной загрузки файла,
-  // который будет вызывать showButtonsInterface()
-
-  // Add event listener for form submission
   uploadForm.addEventListener("submit", handleFormSubmit);
 
-  // Initialize Socket.IO connection
-  const socket = io();
+  const socket = io(window.location.origin);
   socket.on("log_message", handleLogMessage);
 
-  /**
-   * Handle form submission
-   * @param {Event} e - The submit event
-   */
   function handleFormSubmit(e) {
     e.preventDefault();
-
-    // Create FormData object from the form
     const formData = new FormData(uploadForm);
-
-    // Create and configure XMLHttpRequest
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/", true);
     xhr.onload = handleXhrResponse;
-
-    // Show loading indicator
     loadingElement.style.display = "block";
-
-    // Send the form data
     xhr.send(formData);
   }
 
-  /**
-   * Handle XMLHttpRequest response
-   */
   function handleXhrResponse() {
     if (this.status === 200) {
       const response = JSON.parse(this.responseText);
-      if (response.task_id) {
-        checkTaskStatus(response.task_id);
+      messageElement.innerText = response.message || response.error;
+      if (response.message) {
+        checkTaskStatus();
       } else {
-        messageElement.innerText = response.message || response.error;
+        loadingElement.style.display = "none";
       }
     } else {
       messageElement.innerText = "Error uploading file";
+      loadingElement.style.display = "none";
     }
-    loadingElement.style.display = "none";
   }
 
-  /**
-   * Handle incoming log messages from Socket.IO
-   * @param {string} msg - The log message
-   */
-
   function handleLogMessage(msg) {
-    // Check if this is an error message and if it's the same as the last one
-    if (uniqueMassages.includes(msg.text)) {
+    console.log(msg);
+    if (uniqueMessages.includes(msg.text)) {
       return;
     } else {
-      uniqueMassages.push(msg.text);
+      uniqueMessages.push(msg.text);
     }
 
     const alertDiv = document.createElement("div");
     alertDiv.role = "alert";
 
-    // Determine the alert class based on the message type
     switch (msg.type) {
       case "error":
         alertDiv.className = "alert alert-danger";
-
         break;
       case "warning":
         alertDiv.className = "alert alert-warning";
@@ -116,25 +87,29 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     alertDiv.textContent = msg.text;
-
     logMessagesElement.appendChild(alertDiv);
     logMessagesElement.scrollTop = logMessagesElement.scrollHeight;
   }
 
-  function checkTaskStatus(taskId) {
+  function checkTaskStatus() {
     const xhr = new XMLHttpRequest();
-    xhr.open("GET", `/task_status/${taskId}`, true);
+    xhr.open("GET", "/task_status", true);
     xhr.onload = function () {
       if (this.status === 200) {
         const response = JSON.parse(this.responseText);
         if (response.state === "SUCCESS") {
-          messageElement.innerText = "File processed successfully";
+          messageElement.innerText =
+            response.result || "File processed successfully";
+          loadingElement.style.display = "none";
           showButtonsInterface();
         } else if (response.state === "FAILURE") {
-          messageElement.innerText = `Error: ${response.status}`;
+          messageElement.innerText = `Error: ${response.result}`;
+          loadingElement.style.display = "none";
+        } else if (response.state === "PROCESSING") {
+          messageElement.innerText = "Processing...";
+          setTimeout(checkTaskStatus, 2000);
         } else {
-          messageElement.innerText = `Processing: ${response.status}`;
-          setTimeout(() => checkTaskStatus(taskId), 2000);
+          loadingElement.style.display = "none";
         }
       }
     };

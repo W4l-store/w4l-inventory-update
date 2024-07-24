@@ -1,48 +1,44 @@
-# app.py
-
 import os
 import pandas as pd
 from flask import Flask, render_template, request, jsonify, send_file
 from werkzeug.utils import secure_filename
 from flask_socketio import SocketIO
 from logging.handlers import SocketHandler
-
 import glob
 import csv
 import logging
 import zipfile
 import time
 import threading
-from celery import Celery
+from datetime import datetime
+import uuid
 
 from utils.reserving import update_all_BS_sku_reserve
 from utils.generate_inv_update_files import generate_inv_update_files
-from utils.helpers import is_inv_updated_today
-from utils.helpers import a_ph
+from utils.helpers import is_inv_updated_today, a_ph
 
 app = Flask(__name__)
 socketio = SocketIO(app)
-
-celery = Celery(app.name, broker='redis://localhost:6379/0')
-celery.conf.update(app.config)
 
 # Configure logging
 class SocketIOHandler(SocketHandler):
     def emit(self, record):
         socketio.emit('log_message', {"text": record.getMessage(), "type": record.levelname.lower()})
 
-# Configure root logger
 logging.getLogger().setLevel(logging.INFO)
-logging.getLogger().addHandler(SocketIOHandler('localhost', 9000))
+logging.getLogger().addHandler(SocketIOHandler('', 0))
+
 
 logger = logging.getLogger(__name__)
 
-# Configuration
 UPLOAD_FOLDER = 'resources/user_uploads/'
 ALLOWED_EXTENSIONS = {'txt'}
 PIN_CODE = "{{1234}}"
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Global variable to track the current task
+current_task = None
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -50,69 +46,63 @@ def allowed_file(filename):
 @app.route('/', methods=['GET'])
 def main_page():
     is_updated_today = is_inv_updated_today()
-    
-    return render_template('upload.html', is_updated_today= is_updated_today)
+    global current_task
+    is_processing = current_task is not None
+    return render_template('upload.html', is_updated_today=is_updated_today, is_processing=is_processing)
 
 @app.route('/', methods=['POST'])
 def upload_file():
-
+    global current_task
     logger.info('File upload request received')
+    if current_task:
+        return jsonify({'error': 'A task is already in progress'})
+    
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'})
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'})
     if file and allowed_file(file.filename):
-        #delete old files
         files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], '*'))
         for f in files:
             os.remove(f)
-        # Save the file
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], "BS_stock.TXT")
         file.save(file_path)
-        task = process_file_task.delay(file_path)
-        return jsonify({'message': 'File uploaded and processing started', 'task_id': task.id})
+        task_id = str(uuid.uuid4())
+        current_task = {'task_id': task_id, 'start_time': datetime.now().isoformat(), 'status': 'PROCESSING'}
+        threading.Thread(target=process_file_task, args=(file_path, task_id)).start()
+        return jsonify({'message': 'File uploaded and processing started'})
 
-
-
-@celery.task
-def process_file_task(file_path):
+def process_file_task(file_path, task_id):
+    global current_task
     try:
         BS_export_df = pd.read_csv(file_path, sep='\t', encoding='ascii', skiprows=2, dtype=str)
         generate_inv_update_files(BS_export_df)
         update_all_BS_sku_reserve()
-        return jsonify({'message': 'File processed successfully'})
-
+        current_task['status'] = 'SUCCESS'
+        current_task['result'] = 'File processed successfully'
     except Exception as e:
         logger.error(f"Error processing file: {str(e)}")
-        return jsonify({'error': f'Error processing file: {str(e)}'})
+        current_task['status'] = 'FAILURE'
+        current_task['result'] = f'Error processing file: {str(e)}'
+
+@app.route('/task_status')
+def task_status():
+    global current_task
+    if current_task:
+        return jsonify({
+            'state': current_task['status'],
+            'result': current_task.get('result', '')
+        })
+    return jsonify({'state': 'NO_TASK'})
 
 @app.route('/download')
 def download_file():
     zip_files = glob.glob(a_ph('/download/*.zip'))
-    if not zip_files:
-        return jsonify({'error': 'No update files available'})
-    else:
-        file_name = zip_files[0]
-
+    if not zip_files or not is_inv_updated_today():
+        return jsonify({'error': 'No update files available or file not created today'})
+    file_name = zip_files[0]
     return send_file(file_name, as_attachment=True)
 
-@app.route('/update_api', methods=['POST'])
-def update_api():
-    pin = request.json.get('pin')
-    if pin != PIN_CODE:
-        return jsonify({'error': 'Incorrect PIN'})
-    
-    # Simulating API update process
-    time.sleep(5)
-    
-    return jsonify({'message': 'API update successful'})
-
-@socketio.on('connect')
-def test_connect():
-    print('Client connected')
-
 if __name__ == '__main__':
-    # socketio.run(app, debug=True, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
-    socketio.run(app, host='0.0.0.0', port=8000)
-
+    socketio.run(app, host='127.0.0.1', port=8000)
