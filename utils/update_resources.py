@@ -16,6 +16,7 @@ update_double_roles_map_worksheet_name = "double_roles_map"
 wayfair_sku_mapping_worksheet_name = "wayfair_sku_mapping"
 walmart_sku_mapping_worksheet_name = "walmart_sku_mapping"
 houzz_sku_mapping_worksheet_name = "houzz_sku_mapping"
+BS_qty_overwrite_map = "BS_qty_overwrite_map"
 
 
 def update_resources():
@@ -34,6 +35,7 @@ def update_from_google_sheet():
         update_walmart_sku_mapping(workbook)
         update_houzz_sku_mapping(workbook)
         update_pack_of_map(workbook)
+        update_BS_qty_overwrite_map(workbook)
     except Exception as e: 
         logger.error(f"Error in updating resources from google sheet {e}")
         raise e
@@ -73,7 +75,12 @@ def update_double_roles_map(workbook):
         json.dump(double_roles_map, f)
     logger.info("Updated double roles map")
 
-
+def update_BS_qty_overwrite_map(workbook):
+    mapping_df = pd.DataFrame(get_worksheet_df_by_name(workbook, BS_qty_overwrite_map).get_all_records())
+    overwrite_dict = dict(zip(mapping_df['BS_SKU'], mapping_df['Overwrite_Quantity']))
+    with open(a_ph('/resources/blue_system/BS_qty_overwrite_map.json'), 'w') as f:
+        json.dump(overwrite_dict, f)
+    logger.info("Updated BS qty overwrite map")
 
 
 def get_workbook(sheet_id = "1ZMzIMn7CzV_tUJSfXguHYLh3fkkgHVh_0u2NBWCzEAQ"):

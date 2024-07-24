@@ -26,6 +26,9 @@ def BS_sku_to_qtt_map_generator(BS_export_df, use_prod_type=False):
             # Drop rows where 'PROD TYPE' is NaN
             related_df = related_df.dropna(subset=['PROD TYPE'])
 
+            # Drop rows with PROD TYPE = 'DISCONTINUED'
+            related_df = related_df[related_df['PROD TYPE'] != 'DISCONTINUED']
+
             # Create dictionary mapping PROD TYPE to AVAIL
             prod_type_avail_map = dict(zip(related_df['PROD TYPE'], related_df['AVAIL']))
             
@@ -38,6 +41,16 @@ def BS_sku_to_qtt_map_generator(BS_export_df, use_prod_type=False):
             for sku in skus_for_update:
                 sku_avail_map[sku] = prod_type_avail_map[sku]
         
+        # overwrite the values in the BS_qty_overwrite_map
+        BS_qty_overwrite_map = json.load(open(a_ph('/resources/blue_system/BS_qty_overwrite_map.json'), 'r'))
+        for sku, qtt in BS_qty_overwrite_map.items():
+            if sku in sku_avail_map:
+                sku_avail_map[sku] = qtt
+            else:
+                logger.warning(f"SKU '{sku}' from BS_qty_overwrite_map not found in BS_export_df")
+        
+        
+
 
         logger.info(f"Successfully created SKU to quantity map with {len(sku_avail_map)} entries")
         return sku_avail_map
