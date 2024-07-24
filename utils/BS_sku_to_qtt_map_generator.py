@@ -10,7 +10,7 @@ def BS_sku_to_qtt_map_generator(BS_export_df, use_prod_type=False):
     try:
         BS_export_df = stabilize_BS_df(BS_export_df)
        
-        double_roles_map = json.load(open(a_ph('/resources/blue_sistem/double_roles_map.json'), 'r'))
+        double_roles_map = json.load(open(a_ph('/resources/blue_system/double_roles_map.json'), 'r'))
         
         BS_export_df['AVAIL'] = BS_export_df.apply(process_avail_value, args=(double_roles_map,), axis=1)
 

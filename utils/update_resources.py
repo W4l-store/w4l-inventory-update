@@ -11,41 +11,68 @@ logger = logging.getLogger(__name__)
 
 from dotenv import load_dotenv
 
+amz_sku_mapping_worksheet_name = "amazon_sku_mapping"
+update_double_roles_map_worksheet_name = "double_roles_map"
+wayfair_sku_mapping_worksheet_name = "wayfair_sku_mapping"
+walmart_sku_mapping_worksheet_name = "walmart_sku_mapping"
+houzz_sku_mapping_worksheet_name = "houzz_sku_mapping"
+
+
 def update_resources():
     logger.info("Updating resources")
     update_from_google_sheet()
     logger.info("Resources updated ")
 
 def update_from_google_sheet():
-    amz_sku_mapping_worksheet_name = "amazon_sku_mapping"
-    update_double_roles_map_worksheet_name = "double_roles_map"
-
-    workbook = get_workbook()
-
-
-    amz_sku_mapping_df = pd.DataFrame(get_worksheet_df_by_name(workbook, amz_sku_mapping_worksheet_name).get_all_records())
-    
-    
-    update_amz_sku_mapping(amz_sku_mapping_df)
-
-    update_double_roles_map_df = pd.DataFrame(get_worksheet_df_by_name(workbook, update_double_roles_map_worksheet_name).get_all_records())
-    update_double_roles_map(update_double_roles_map_df)
-
-
-
-
-
-def update_amz_sku_mapping(amz_NA_mapping_df: pd.DataFrame):
    
-    amz_NA_mapping_df.to_csv(os.path.join(a_ph('/resources/amazon/BS_SKU_mapping'), 'amz_sku_mapping.csv'), index=False)
-    logger.info("Updated NA mapping")
+    try:
+        workbook = get_workbook()    
+        
+        update_amz_sku_mapping(workbook)
+        update_double_roles_map(workbook)
+        update_wayfair_sku_mapping(workbook)
+        update_walmart_sku_mapping(workbook)
+        update_houzz_sku_mapping(workbook)
+        update_pack_of_map(workbook)
+    except Exception as e: 
+        logger.error(f"Error in updating resources from google sheet {e}")
+        raise e
 
-def update_double_roles_map(update_double_roles_map_df):
-    #resources/blue_sistem/double_roles_map.json
+
+
+
+def update_amz_sku_mapping(workbook):
+    mapping_df = pd.DataFrame(get_worksheet_df_by_name(workbook, amz_sku_mapping_worksheet_name).get_all_records())
+    mapping_df.to_csv(os.path.join(a_ph('/resources/amazon'), 'amz_sku_mapping.csv'), index=False)
+    logger.info("Updated amazon - blue system mapping")
+
+def update_wayfair_sku_mapping(workbook):
+    mapping_df = pd.DataFrame(get_worksheet_df_by_name(workbook, wayfair_sku_mapping_worksheet_name).get_all_records())
+    mapping_df.to_csv(os.path.join(a_ph('/resources/wayfair'), 'wayfair_sku_mapping.csv'), index=False)
+    logger.info("Updated wayfair - blue system mapping")
+
+def update_walmart_sku_mapping(workbook):
+    mapping_df = pd.DataFrame(get_worksheet_df_by_name(workbook, walmart_sku_mapping_worksheet_name).get_all_records())
+    mapping_df.to_csv(os.path.join(a_ph('/resources/walmart'), 'walmart_sku_mapping.csv'), index=False)
+    logger.info("Updated walmart - blue system mapping")
+
+def update_houzz_sku_mapping(workbook):
+    mapping_df = pd.DataFrame(get_worksheet_df_by_name(workbook, houzz_sku_mapping_worksheet_name).get_all_records())
+    mapping_df.to_csv(os.path.join(a_ph('/resources/houzz'), 'houzz_sku_mapping.csv'), index=False)
+    logger.info("Updated houzz - blue system mapping")
+
+def update_pack_of_map(workbook):
+    pack_of_map_df = pd.DataFrame(get_worksheet_df_by_name(workbook, "pack_of_map").get_all_records())
+    pack_of_map_df.to_csv(os.path.join(a_ph('/resources/'), 'pack_of_map.csv'), index=False)
+    logger.info("Updated pack of map")
+
+def update_double_roles_map(workbook):
+    update_double_roles_map_df = pd.DataFrame(get_worksheet_df_by_name(workbook, update_double_roles_map_worksheet_name).get_all_records())
     double_roles_map = dict(zip(update_double_roles_map_df['NAME'].str.strip(), update_double_roles_map_df['delimiter'].astype(int)))
-    with open(a_ph('/resources/blue_sistem/double_roles_map.json'), 'w') as f:
+    with open(a_ph('/resources/blue_system/double_roles_map.json'), 'w') as f:
         json.dump(double_roles_map, f)
     logger.info("Updated double roles map")
+
 
 
 
@@ -115,8 +142,8 @@ def get_worksheet_df_by_name(workbook,worksheet_name):
 def update_BS_all_sku_reserve_local():
     BS_all_sku_reserve = "BS_all_sku_reserve"
     workbook = get_workbook()
-    amz_NA_mapping_df = pd.DataFrame(get_worksheet_df_by_name(workbook, BS_all_sku_reserve).get_all_records())
-    amz_NA_mapping_df.to_csv(os.path.join(a_ph('resources/reserve/blue_system/BS_all_sku_reserve.csv'), 'BS_all_sku_reserve.csv'), index=False)
+    mapping_df = pd.DataFrame(get_worksheet_df_by_name(workbook, BS_all_sku_reserve).get_all_records())
+    mapping_df.to_csv(os.path.join(a_ph('resources/reserve/blue_system/BS_all_sku_reserve.csv'), 'BS_all_sku_reserve.csv'), index=False)
 
 
 

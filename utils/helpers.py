@@ -41,9 +41,6 @@ def is_inv_updated_today():
         return date_str == today
     
 
-def test ():
-    print(is_inv_updated_today())
-    
-# test()
+
     
     

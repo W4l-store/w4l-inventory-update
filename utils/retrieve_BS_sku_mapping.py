@@ -17,7 +17,7 @@ def retrieve_BS_sku_mapping(region, statuses_allowed=['Active', 'Inactive','Inco
 
 
 
-    source_df = pd.read_csv(a_ph('/resources/amazon/BS_SKU_mapping/amz_sku_mapping.csv'), dtype=str)
+    source_df = pd.read_csv(a_ph('/resources/amazon/amz_sku_mapping.csv'), dtype=str)
     
     # filter the empty status columns
     source_df = source_df[source_df[status_column].notna()]
