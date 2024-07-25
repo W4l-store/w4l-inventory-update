@@ -12,7 +12,7 @@ from .wayfair import gen_wayfair_inv_update_by_region
 from .walmart import gen_walmart_inv_update_by_region
 from .houzz import gen_houzz_inv_update
 from .update_resources import update_resources
-from .helpers import a_ph
+from .helpers import a_ph, set_processing_status
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +124,7 @@ def generate_inv_update_files(BS_export_df: pd.DataFrame) -> None:
             os.rmdir('Houzz')
         
         logger.info(f"Inventory update files generated and saved to {zip_filename}")
+
     
     except Exception as e:
         logger.error(f"Error generating inventory update files: {str(e)}")

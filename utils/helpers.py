@@ -3,6 +3,8 @@ from flask import current_app
 import time
 import glob
 import pandas as pd
+import json
+
 
 def a_ph(relative_path):
     """
@@ -65,3 +67,13 @@ def apply_pack_of_map(sku_to_qtt_map, marketplace):
         if amz_sku in sku_to_qtt_map:
             sku_to_qtt_map[amz_sku] = sku_to_qtt_map[amz_sku] // pack_of
     return sku_to_qtt_map
+
+def set_processing_status(status, ):
+    # set the status of the current task in the file processing_status.json
+    with open(a_ph('processing_status.json'), 'w') as f:
+        json.dump({"state": status}, f)
+
+def get_processing_status():
+    # get the status of the current task from the file processing_status.json
+    with open(a_ph('processing_status.json'), 'r') as f:
+        return json.load(f)['state']

@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
+  // DOM elements
   const uploadForm = document.getElementById("uploadForm");
   const messageElement = document.getElementById("message");
   const logMessagesElement = document.getElementById("logMessages");
@@ -8,44 +9,40 @@ document.addEventListener("DOMContentLoaded", function () {
   const newUploadBtn = document.getElementById("newUploadBtn");
   const downloadBtn = document.getElementById("downloadBtn");
 
-  function showUploadInterface() {
-    uploadInterface.style.display = "block";
-    loadingInterface.style.display = "none";
-    buttonsInterface.style.display = "none";
+  // Unique messages array to prevent duplicate log messages
+  let uniqueMessages = [];
+
+  // Interface visibility functions
+  function showInterface(interfaceElement) {
+    [uploadInterface, loadingInterface, buttonsInterface].forEach((el) => {
+      el.style.display = el === interfaceElement ? "block" : "none";
+    });
   }
 
-  function showLoadingInterface() {
-    uploadInterface.style.display = "none";
-    loadingInterface.style.display = "block";
-    buttonsInterface.style.display = "none";
-  }
-
-  function showButtonsInterface() {
-    uploadInterface.style.display = "none";
-    loadingInterface.style.display = "none";
-    buttonsInterface.style.display = "block";
-  }
-
+  // Initialize interface based on task status
   function initializeInterface() {
     checkTaskStatus(true);
   }
 
+  // Event listener for new upload button
   newUploadBtn.addEventListener("click", function () {
-    showUploadInterface();
+    showInterface(uploadInterface);
     logMessagesElement.innerHTML = "";
     uniqueMessages = [];
   });
 
+  // Handle form submission
   function handleFormSubmit(e) {
     e.preventDefault();
     const formData = new FormData(uploadForm);
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/", true);
     xhr.onload = handleXhrResponse;
-    showLoadingInterface();
+    showInterface(loadingInterface);
     xhr.send(formData);
   }
 
+  // Handle XHR response
   function handleXhrResponse() {
     if (this.status === 200) {
       const response = JSON.parse(this.responseText);
@@ -53,14 +50,15 @@ document.addEventListener("DOMContentLoaded", function () {
       if (response.message) {
         checkTaskStatus();
       } else {
-        showUploadInterface();
+        showInterface(uploadInterface);
       }
     } else {
       messageElement.innerText = "Error uploading file";
-      showUploadInterface();
+      showInterface(uploadInterface);
     }
   }
 
+  // Handle log messages
   function handleLogMessage(msg) {
     if (!uniqueMessages.includes(msg.text)) {
       uniqueMessages.push(msg.text);
@@ -81,37 +79,37 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  // Check task status
   function checkTaskStatus(isInitial = false) {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", "/task_status", true);
     xhr.onload = function () {
       if (this.status === 200) {
         const response = JSON.parse(this.responseText);
+        console.log(response);
         switch (response.state) {
           case "SUCCESS":
             messageElement.innerText =
               response.result || "File processed successfully";
-            showButtonsInterface();
+            showInterface(buttonsInterface);
             updateDownloadButtonDate();
             break;
           case "FAILURE":
             messageElement.innerText = `Error: ${response.result}`;
-            showUploadInterface();
+            showInterface(uploadInterface);
             break;
           case "PROCESSING":
             messageElement.innerText = "Processing...";
-            showLoadingInterface();
+            showInterface(loadingInterface);
             setTimeout(checkTaskStatus, 2000);
             break;
           case "NO_TASK":
             if (isInitial) {
-              if (isUpdatedToday) {
-                showButtonsInterface();
-              } else {
-                showUploadInterface();
-              }
+              showInterface(
+                isUpdatedToday ? buttonsInterface : uploadInterface
+              );
             } else {
-              showUploadInterface();
+              showInterface(uploadInterface);
             }
             break;
         }
@@ -120,12 +118,14 @@ document.addEventListener("DOMContentLoaded", function () {
     xhr.send();
   }
 
+  // Update download button date
   function updateDownloadButtonDate() {
     const today = new Date();
     const dateString = today.toISOString().split("T")[0];
     downloadBtn.textContent = `Download inventory update files (${dateString})`;
   }
 
+  // Socket.io setup
   const socket = io({
     reconnection: true,
     reconnectionAttempts: Infinity,
@@ -144,11 +144,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   socket.on("log_message", handleLogMessage);
 
-  let uniqueMessages = [];
-
+  // Initialize interface
   initializeInterface();
 
+  // Event listener for form submission
   uploadForm.addEventListener("submit", handleFormSubmit);
 
+  // Update download button date on load
   updateDownloadButtonDate();
 });
