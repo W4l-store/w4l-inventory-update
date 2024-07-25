@@ -7,7 +7,7 @@ from .BS_sku_to_qtt_map_generator import BS_sku_to_qtt_map_generator
 from .helpers import a_ph, apply_pack_of_map
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 def gen_wayfair_inv_update_by_region(BS_export_df: pd.DataFrame, region: str) -> pd.DataFrame:

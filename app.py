@@ -2,8 +2,6 @@ import os
 import pandas as pd
 from flask import Flask, render_template, request, jsonify, send_file
 from werkzeug.utils import secure_filename
-from flask_socketio import SocketIO
-from logging.handlers import SocketHandler
 import glob
 import logging
 import threading
@@ -11,77 +9,29 @@ from datetime import datetime
 import time
 import uuid
 from threading import Lock
+from flask_cors import CORS
 from collections import deque
+
 
 from utils.reserving import update_all_BS_sku_reserve
 from utils.generate_inv_update_files import generate_inv_update_files
-from utils.helpers import get_processing_status, is_inv_updated_today, a_ph, set_processing_status
+from utils.helpers import get_processing_status, is_inv_updated_today, a_ph, set_processing_status, clear_processing_logs, append_to_processing_logs
+
+from logger_config import setup_logger
+
 
 app = Flask(__name__)
-socketio = SocketIO(app, ping_timeout=60, ping_interval=25)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-class SocketIOHandler(SocketHandler):
-    def emit(self, record):
-        socketio.emit('log_message', {"text": record.getMessage(), "type": record.levelname.lower()})
+# Setup logger
+logger = setup_logger()
 
-class TimedDuplicateFilter(logging.Filter):
-    def __init__(self, timeout=3600, max_cache=1000):
-        super().__init__()
-        self.msgs = deque(maxlen=max_cache)
-        self.timeout = timeout
 
-    def filter(self, record):
-        msg = record.msg
-        current_time = time.time()
-        self.msgs = deque([(m, t) for m, t in self.msgs if current_time - t < self.timeout], maxlen=self.msgs.maxlen)
-        if msg not in [m for m, _ in self.msgs]:
-            self.msgs.append((msg, current_time))
-            return True
-        return False
-
-# Configure root logger
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
-
-# Create and configure SocketIOHandler
-socketio_handler = SocketIOHandler('', 0)
-socketio_handler.setLevel(logging.INFO)
-
-# Create and apply TimedDuplicateFilter
-timed_duplicate_filter = TimedDuplicateFilter(timeout=3600, max_cache=1000)
-socketio_handler.addFilter(timed_duplicate_filter)
-
-# Add SocketIOHandler to the root logger
-root_logger.addHandler(socketio_handler)
-
-# Apply filter to all existing loggers
-for name in logging.root.manager.loggerDict:
-    logger = logging.getLogger(name)
-    logger.addFilter(timed_duplicate_filter)
-
-# Create logger for the current module
-logger = logging.getLogger(__name__)
-
-def clear_log_cache():
-    while True:
-        time.sleep(3600)  # Clear cache every hour
-        timed_duplicate_filter.msgs.clear()
-
-# Start the cache clearing thread
-threading.Thread(target=clear_log_cache, daemon=True).start()
-
-# Rest of your code remains the same
 UPLOAD_FOLDER = 'resources/user_uploads/'
 ALLOWED_EXTENSIONS = {'txt'}
 PIN_CODE = "{{1234}}"
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Global variables
-current_task_lock = Lock()
-current_task = {'status': 'NO_TASK', 'result': ''}
-
-
 
 
 def allowed_file(filename):
@@ -89,15 +39,16 @@ def allowed_file(filename):
 
 @app.route('/', methods=['GET'])
 def main_page():
+    logger.info('Main page requested')
     is_updated_today = is_inv_updated_today()
     if not is_updated_today:
         set_processing_status('NO_TASK')
-    elif get_processing_status() != 'PROCESSING':
+    elif get_processing_status()['state'] != 'PROCESSING':
         set_processing_status('NO_TASK')
     elif is_updated_today:
         set_processing_status('SUCCESS')
     
-    if get_processing_status() == 'PROCESSING':
+    if get_processing_status()['state'] == 'PROCESSING':
         is_processing = True
     else:
         is_processing = False
@@ -106,59 +57,59 @@ def main_page():
 
 @app.route('/', methods=['POST'])
 def upload_file():
-    global current_task
+    current_task = get_processing_status()
     logger.info('File upload request received')
     
-    with current_task_lock:
-        if current_task['status'] == 'PROCESSING':
-            return jsonify({'error': 'A task is already in progress'})
-    
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file part'})
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No selected file'})
-        if file and allowed_file(file.filename):
-            files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], '*'))
-            for f in files:
-                os.remove(f)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], "BS_stock.TXT")
-            file.save(file_path)
-            task_id = str(uuid.uuid4())
-            current_task = {'task_id': task_id, 'start_time': datetime.now().isoformat(), 'status': 'PROCESSING'}
+    if current_task['state'] == 'PROCESSING':
+        return jsonify({'error': 'A task is already in progress'})
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'})
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'})
+    if file and allowed_file(file.filename):
+        files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], '*'))
+        for f in files:
+            os.remove(f)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], "BS_stock.TXT")
+        file.save(file_path)
+        task_id = str(uuid.uuid4())
     
     threading.Thread(target=process_file_task, args=(file_path, task_id)).start()
     return jsonify({'message': 'File uploaded and processing started'})
 
 def process_file_task(file_path, task_id):
-    global current_task
-    set_processing_status('PROCESSING')
+    current_task = get_processing_status()
+    set_processing_status('PROCESSING', result='File processing started')
+    clear_processing_logs()
     try:
+        logger.info('Starting file processing')
         BS_export_df = pd.read_csv(file_path, sep='\t', encoding='ascii', skiprows=2, dtype=str)
         generate_inv_update_files(BS_export_df)
 
-        set_processing_status('SUCCESS')
+        logger.info('File processing completed successfully')
+       
 
         update_all_BS_sku_reserve()
-        with current_task_lock:
-            current_task['status'] = 'SUCCESS'
-            current_task['result'] = 'File processed successfully'
+        current_task['state'] = 'SUCCESS'
+        current_task['result'] = 'File processed successfully'
+        set_processing_status('SUCCESS', result='File processed successfully')
            
     except Exception as e:
         logger.error(f"Error processing file: {str(e)}")
-        with current_task_lock:
-            current_task['status'] = 'FAILURE'
-            current_task['result'] = f'Error processing file: {str(e)}'
-            set_processing_status('FAILURE')
+        current_task['state'] = 'FAILURE'
+        current_task['result'] = f'Error processing file: {str(e)}'
+        set_processing_status('FAILURE', result=f'Error processing file: {str(e)}')
 
 @app.route('/task_status')
 def task_status():
-    with current_task_lock:
-        status = get_processing_status()
-        return jsonify({
-            'state': status,
-            'result': current_task.get('result', '')
-        })
+    status_data = get_processing_status()
+    return jsonify({
+        'state': status_data['state'],
+        'result': status_data.get('result', ''),
+        'logs': status_data.get('logs', [])
+    })
 
 @app.route('/download')
 def download_file():
@@ -168,31 +119,5 @@ def download_file():
     file_name = zip_files[0]
     return send_file(file_name, as_attachment=True)
 
-@socketio.on_error_default
-def default_error_handler(e):
-    print(f'An error occurred: {e}')
-    socketio.emit('error', {'message': 'An error occurred on the server'})
-
-@socketio.on('connect')
-def handle_connect():
-    socketio.server.eio.generate_id = lambda: uuid.uuid4().hex
-
-def clean_sessions():
-    while True:
-        socketio.sleep(3600)  # Очистка каждый час
-        socketio.server.eio.clean_timers()
-
-socketio.start_background_task(clean_sessions)
-
-@socketio.on('connect')
-def handle_connect():
-    print(f'Client connected: {request.sid} from {request.remote_addr}')
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    print(f'Client disconnected: {request.sid} from {request.remote_addr}')
-
 if __name__ == '__main__':
-    socketio.run(app, host='127.0.0.1', port=8000, debug=True, use_reloader=False)
-
-
+    app.run(host='127.0.0.1', port=8000, debug=True, use_reloader=False)

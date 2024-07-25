@@ -9,9 +9,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const newUploadBtn = document.getElementById("newUploadBtn");
   const downloadBtn = document.getElementById("downloadBtn");
 
-  // Unique messages array to prevent duplicate log messages
-  let uniqueMessages = [];
-
   // Interface visibility functions
   function showInterface(interfaceElement) {
     [uploadInterface, loadingInterface, buttonsInterface].forEach((el) => {
@@ -27,8 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Event listener for new upload button
   newUploadBtn.addEventListener("click", function () {
     showInterface(uploadInterface);
-    logMessagesElement.innerHTML = "";
-    uniqueMessages = [];
+    // logMessagesElement.innerHTML = "";
   });
 
   // Handle form submission
@@ -59,24 +55,27 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Handle log messages
-  function handleLogMessage(msg) {
-    if (!uniqueMessages.includes(msg.text)) {
-      uniqueMessages.push(msg.text);
+  function handleLogMessages(logs) {
+    logMessagesElement.innerHTML = ""; // Clear existing logs
+    logs.forEach((log) => {
+      // 2024-07-25 12:22:16,479 - utils.houzz - WARNING - SKUs not found in Blue System export data: 6752
+      // remuve 2024-07-25 12:22:16,479 - utils.houzz -  part from logs
+      log = log.split(" - ").slice(2).join(" - ");
       const alertDiv = document.createElement("div");
       alertDiv.role = "alert";
       alertDiv.className = `alert alert-${
-        msg.type === "error"
+        log.includes("ERROR")
           ? "danger"
-          : msg.type === "warning"
+          : log.includes("WARNING")
           ? "warning"
-          : msg.type === "info"
+          : log.includes("INFO")
           ? "info"
           : "secondary"
       }`;
-      alertDiv.textContent = msg.text;
+      alertDiv.textContent = log;
       logMessagesElement.appendChild(alertDiv);
-      logMessagesElement.scrollTop = logMessagesElement.scrollHeight;
-    }
+    });
+    logMessagesElement.scrollTop = logMessagesElement.scrollHeight;
   }
 
   // Check task status
@@ -93,21 +92,27 @@ document.addEventListener("DOMContentLoaded", function () {
               response.result || "File processed successfully";
             showInterface(buttonsInterface);
             updateDownloadButtonDate();
+            handleLogMessages(response.logs);
             break;
           case "FAILURE":
             messageElement.innerText = `Error: ${response.result}`;
             showInterface(uploadInterface);
+            handleLogMessages(response.logs);
             break;
           case "PROCESSING":
             messageElement.innerText = "Processing...";
             showInterface(loadingInterface);
+            handleLogMessages(response.logs);
             setTimeout(checkTaskStatus, 2000);
             break;
           case "NO_TASK":
             if (isInitial) {
-              showInterface(
-                isUpdatedToday ? buttonsInterface : uploadInterface
-              );
+              if (isUpdatedToday) {
+                showInterface(buttonsInterface);
+                handleLogMessages(response.logs);
+              } else {
+                showInterface(uploadInterface);
+              }
             } else {
               showInterface(uploadInterface);
             }
@@ -125,24 +130,23 @@ document.addEventListener("DOMContentLoaded", function () {
     downloadBtn.textContent = `Download inventory update files (${dateString})`;
   }
 
-  // Socket.io setup
-  const socket = io({
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    timeout: 20000,
+  // Scroll to top functionality
+  const scrollToTopBtn = document.getElementById("scrollToTopBtn");
+
+  window.addEventListener("scroll", function () {
+    if (window.pageYOffset > 100) {
+      scrollToTopBtn.style.display = "block";
+    } else {
+      scrollToTopBtn.style.display = "none";
+    }
   });
 
-  socket.on("disconnect", () => {
-    console.log("Disconnected from server, trying to reconnect...");
+  scrollToTopBtn.addEventListener("click", function () {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   });
-
-  socket.on("connect", () => {
-    console.log("Connected to server");
-  });
-
-  socket.on("log_message", handleLogMessage);
 
   // Initialize interface
   initializeInterface();

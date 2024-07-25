@@ -22,8 +22,6 @@ from .BS_sku_to_qtt_map_generator import BS_sku_to_qtt_map_generator
 from .helpers import a_ph, get_back_of_map_by_marketplace
 
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def gen_amz_inv_update_by_region( BS_export_df: pd.DataFrame, region: str,) -> pd.DataFrame:

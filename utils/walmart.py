@@ -7,7 +7,7 @@ from .BS_sku_to_qtt_map_generator import BS_sku_to_qtt_map_generator
 from .helpers import a_ph, apply_pack_of_map
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 

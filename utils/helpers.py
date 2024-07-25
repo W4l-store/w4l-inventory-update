@@ -4,6 +4,9 @@ import time
 import glob
 import pandas as pd
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def a_ph(relative_path):
@@ -68,12 +71,34 @@ def apply_pack_of_map(sku_to_qtt_map, marketplace):
             sku_to_qtt_map[amz_sku] = sku_to_qtt_map[amz_sku] // pack_of
     return sku_to_qtt_map
 
-def set_processing_status(status, ):
-    # set the status of the current task in the file processing_status.json
+def set_processing_status(status, logs=None, result=None):
+    with open(a_ph('processing_status.json'), 'r') as f:
+        data = json.load(f)
+    data["state"] = status
+    if result:
+        data["result"] = result
+    if logs:
+        data["logs"] = logs
     with open(a_ph('processing_status.json'), 'w') as f:
-        json.dump({"state": status}, f)
+        json.dump(data, f)
 
 def get_processing_status():
-    # get the status of the current task from the file processing_status.json
     with open(a_ph('processing_status.json'), 'r') as f:
-        return json.load(f)['state']
+        data = json.load(f)
+    return data
+
+def clear_processing_logs():
+    with open(a_ph('processing_status.json'), 'r') as f:
+        data = json.load(f)
+    data["logs"] = []
+    with open(a_ph('processing_status.json'), 'w') as f:
+        json.dump(data, f)
+
+def append_to_processing_logs(log_entry):
+    with open(a_ph('processing_status.json'), 'r') as f:
+        data = json.load(f)
+    if "logs" not in data:
+        data["logs"] = []
+    data["logs"].append(log_entry)
+    with open(a_ph('processing_status.json'), 'w') as f:
+        json.dump(data, f)

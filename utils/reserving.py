@@ -7,7 +7,7 @@ from .helpers import a_ph
 import os
 import json
 import time
-logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 from .update_resources import get_workbook, get_worksheet_df_by_name
