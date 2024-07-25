@@ -117,6 +117,13 @@ def download_file():
     if not zip_files or not is_inv_updated_today():
         return jsonify({'error': 'No update files available or file not created today'})
     file_name = zip_files[0]
+    
+    try:
+        with open(file_name, 'rb') as f:
+            f.read()
+    except IOError:
+        return jsonify({'error': 'File is not ready for download. Please try again in a few moments.'})
+    
     return send_file(file_name, as_attachment=True)
 
 if __name__ == '__main__':
