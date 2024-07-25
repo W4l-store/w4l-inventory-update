@@ -5,33 +5,72 @@ from werkzeug.utils import secure_filename
 from flask_socketio import SocketIO
 from logging.handlers import SocketHandler
 import glob
-import csv
 import logging
 import threading
 from datetime import datetime
+import time
 import uuid
 from threading import Lock
+from collections import deque
 
 from utils.reserving import update_all_BS_sku_reserve
 from utils.generate_inv_update_files import generate_inv_update_files
 from utils.helpers import get_processing_status, is_inv_updated_today, a_ph, set_processing_status
-import eventlet
 
 app = Flask(__name__)
 socketio = SocketIO(app, ping_timeout=60, ping_interval=25)
 
-eventlet.monkey_patch()
-
-# Configure logging
 class SocketIOHandler(SocketHandler):
     def emit(self, record):
         socketio.emit('log_message', {"text": record.getMessage(), "type": record.levelname.lower()})
 
-logging.getLogger().setLevel(logging.INFO)
-logging.getLogger().addHandler(SocketIOHandler('', 0))
+class TimedDuplicateFilter(logging.Filter):
+    def __init__(self, timeout=3600, max_cache=1000):
+        super().__init__()
+        self.msgs = deque(maxlen=max_cache)
+        self.timeout = timeout
 
+    def filter(self, record):
+        msg = record.msg
+        current_time = time.time()
+        self.msgs = deque([(m, t) for m, t in self.msgs if current_time - t < self.timeout], maxlen=self.msgs.maxlen)
+        if msg not in [m for m, _ in self.msgs]:
+            self.msgs.append((msg, current_time))
+            return True
+        return False
+
+# Configure root logger
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+
+# Create and configure SocketIOHandler
+socketio_handler = SocketIOHandler('', 0)
+socketio_handler.setLevel(logging.INFO)
+
+# Create and apply TimedDuplicateFilter
+timed_duplicate_filter = TimedDuplicateFilter(timeout=3600, max_cache=1000)
+socketio_handler.addFilter(timed_duplicate_filter)
+
+# Add SocketIOHandler to the root logger
+root_logger.addHandler(socketio_handler)
+
+# Apply filter to all existing loggers
+for name in logging.root.manager.loggerDict:
+    logger = logging.getLogger(name)
+    logger.addFilter(timed_duplicate_filter)
+
+# Create logger for the current module
 logger = logging.getLogger(__name__)
 
+def clear_log_cache():
+    while True:
+        time.sleep(3600)  # Clear cache every hour
+        timed_duplicate_filter.msgs.clear()
+
+# Start the cache clearing thread
+threading.Thread(target=clear_log_cache, daemon=True).start()
+
+# Rest of your code remains the same
 UPLOAD_FOLDER = 'resources/user_uploads/'
 ALLOWED_EXTENSIONS = {'txt'}
 PIN_CODE = "{{1234}}"
@@ -42,17 +81,21 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 current_task_lock = Lock()
 current_task = {'status': 'NO_TASK', 'result': ''}
 
+
+
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/', methods=['GET'])
 def main_page():
     is_updated_today = is_inv_updated_today()
-    logger.info(f'/////////////////processing status: {get_processing_status()}')
-    if is_updated_today and get_processing_status() != 'PROCESSING':
-        set_processing_status('SUCCESS')
+    if not is_updated_today:
+        set_processing_status('NO_TASK')
     elif get_processing_status() != 'PROCESSING':
         set_processing_status('NO_TASK')
+    elif is_updated_today:
+        set_processing_status('SUCCESS')
     
     if get_processing_status() == 'PROCESSING':
         is_processing = True
