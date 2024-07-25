@@ -41,9 +41,14 @@ def gen_walmart_inv_update_by_region(BS_export_df: pd.DataFrame, region: str) ->
     # apply the pack of map to the walmart_sku_to_qtt_map
     
     walmart_sku_to_qtt_map = apply_pack_of_map(walmart_sku_to_qtt_map, 'walmart')
-
+    #SKU*	New Quantity*	Fulfillment Center ID
     # Create a pandas DataFrame from the mapping
-    walmart_inv_update_df = pd.DataFrame(list(walmart_sku_to_qtt_map.items()), columns=['sku', 'quantity'])
+    walmart_inv_update_df = pd.DataFrame(list(walmart_sku_to_qtt_map.items()), columns=['SKU*', 'New Quantity*'])
+
+    if region == 'US':
+        walmart_inv_update_df['Fulfillment Center ID'] = '10001404000'
+    elif region == 'CA':
+        walmart_inv_update_df['Fulfillment Center ID'] = '10001065242'
 
     logger.info(f"Generated inventory update data for {len(walmart_inv_update_df)} SKUs")
     return walmart_inv_update_df

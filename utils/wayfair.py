@@ -49,7 +49,17 @@ def gen_wayfair_inv_update_by_region(BS_export_df: pd.DataFrame, region: str) ->
         wayfair_inv_update_df['Supplier ID'] = '217667'
     elif region == 'CA':
         wayfair_inv_update_df['Supplier ID'] = '100778'
-    wayfair_inv_update_df = wayfair_inv_update_df[['Supplier ID', 'Supplier Part#', 'In Stock']]
+
+    # Supplier ID,Supplier Part#,In Stock,Quantity Backordered,Quantity On Order,Item Next Availability Date,Discontinued,Product Name / Options
+    # Add the required columns
+    wayfair_inv_update_df['Quantity Backordered'] = ""
+    wayfair_inv_update_df['Quantity On Order'] = ""
+    wayfair_inv_update_df['Item Next Availability Date'] = ""
+    wayfair_inv_update_df['Discontinued'] = ""
+    wayfair_inv_update_df['Product Name / Options'] = ""
+
+    
+    wayfair_inv_update_df = wayfair_inv_update_df[['Supplier ID', 'Supplier Part#', 'In Stock', 'Quantity Backordered', 'Quantity On Order', 'Item Next Availability Date', 'Discontinued', 'Product Name / Options']]
     
     logger.info(f"Generated inventory update data for {len(wayfair_inv_update_df)} SKUs")
     return wayfair_inv_update_df
