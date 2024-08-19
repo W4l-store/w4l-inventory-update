@@ -1,0 +1,29 @@
+import os
+import subprocess
+import sys
+
+def check_and_update():
+    repo_path = os.path.dirname(os.path.abspath(__file__))
+    
+    try:
+        subprocess.check_call(['git', 'fetch'], cwd=repo_path)
+        result = subprocess.check_output(['git', 'status', '-uno'], cwd=repo_path).decode('utf-8')
+        
+        if "Your branch is behind" in result:
+            print("Updates available. Downloading...")
+            subprocess.check_call(['git', 'pull'], cwd=repo_path)
+            print("Update completed.")
+        else:
+            print("No updates required.")
+        
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error checking/downloading updates: {e}")
+        return False
+
+if __name__ == "__main__":
+    if check_and_update():
+        print("Update check completed successfully.")
+    else:
+        print("Failed to check/download updates. Exiting.")
+        sys.exit(1)
