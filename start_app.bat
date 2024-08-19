@@ -1,5 +1,5 @@
 @echo off
 REM start app lockaly
 pip install python-dotenv
-python setup_and_run.py
+python initialize_update_and_start.py
 pause

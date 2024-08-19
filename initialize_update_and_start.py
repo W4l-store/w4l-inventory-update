@@ -16,13 +16,20 @@ def clone_or_pull_repo(repo_url):
             subprocess.check_call(['git', 'init'], cwd=repo_path)
             subprocess.check_call(['git', 'remote', 'add', 'origin', repo_url], cwd=repo_path)
             subprocess.check_call(['git', 'fetch'], cwd=repo_path)
-            subprocess.check_call(['git', 'reset', '--hard', 'origin/master'], cwd=repo_path)  # Changed 'main' to 'master'
+            subprocess.check_call(['git', 'checkout', '-b', 'master', 'origin/master'], cwd=repo_path)
         else:
             print("Cloning repository...")
             subprocess.check_call(['git', 'clone', repo_url, repo_path])
     else:
         print("Repository already exists. Pulling updates...")
-        subprocess.check_call(['git', 'pull'], cwd=repo_path)
+        try:
+            subprocess.check_call(['git', 'pull'], cwd=repo_path)
+        except subprocess.CalledProcessError:
+            print("Failed to pull. Setting up tracking information and trying again...")
+            subprocess.check_call(['git', 'branch', '--set-upstream-to=origin/master', 'master'], cwd=repo_path)
+            subprocess.check_call(['git', 'pull'], cwd=repo_path)
+
+
 
 def create_venv():
     venv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv')
