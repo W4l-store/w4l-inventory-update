@@ -101,4 +101,4 @@ def append_to_processing_logs(log_entry):
         data["logs"] = []
     data["logs"].append(log_entry)
     with open(a_ph('processing_status.json'), 'w') as f:
-        json.dump(data, f)
+        json.dump(data, f, ensure_ascii=False, default=str)
