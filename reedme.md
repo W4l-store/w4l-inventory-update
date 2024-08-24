@@ -16,18 +16,28 @@ If Git is not already installed:
 
 ## Setup and Run
 
+1. **Prepare an Empty Directory**
+   - Create a new empty directory where you want to install the application
 
-2. **Update the .env File (if necessary)**
+2. **Place Required Files**
+   - Copy files from the `setup` folder into this empty directory
+   - Ensure you have an up-to-date `.env` file and place it in the same directory
+
+3. **Run the Setup Script**
+   - Double-click on the `SETUP.bat`
+   - This script will download and install the latest version of the application
+
+4. **Update the .env File (if necessary)**
    - Open the `.env` file in a text editor
-   - Update any necessary values, such as the `GITHUB_REPO_URL`
+   - Update any necessary values if needed
 
-3. **Run the Application**
-   - Double-click on the `start_app.bat` file
-   - This will install necessary dependencies and start the application
+5. **Run the Application**
+   
+   - Double-click on `START.bat` or `START_LOCAL.bat` to run the application
 
-4. **Access the Application**
-   - Once the server starts, you can access the application through your web browser
-   - The address will typically be: `http://localhost:5000` (unless specified otherwise)
+6. **Access the Application**
+   - Once the server starts, app will be opened automatically in the browser 
+   - The address will typically be: `http://127.0.0.1:8000/` 
 
 ## Troubleshooting
 
@@ -35,4 +45,4 @@ If Git is not already installed:
 - Check that all required files are present in the directory
 - Ensure you have an active internet connection for downloading dependencies
 
-For further assistance, please contact Andrii for support. 
+For further assistance, please contact Andrii for support.
