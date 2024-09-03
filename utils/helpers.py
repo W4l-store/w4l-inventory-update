@@ -71,41 +71,82 @@ def apply_pack_of_map(sku_to_qtt_map, marketplace):
             sku_to_qtt_map[amz_sku] = sku_to_qtt_map[amz_sku] // pack_of
     return sku_to_qtt_map
 
+def reset_processing_status():
+    """Reset the processing status file to a default state."""
+    default_data = {
+        "state": "PROCESSING",
+        "result": "",
+        "logs": []
+    }
+    try:
+        with open(a_ph('processing_status.json'), 'w') as f:
+            json.dump(default_data, f)
+        logger.info("Processing status file has been reset to default state.")
+    except IOError as e:
+        logger.error(f"Error resetting processing_status.json: {str(e)}")
+    return default_data
+
 def set_processing_status(status, logs=None, result=None):
     try:
         with open(a_ph('processing_status.json'), 'r') as f:
             data = json.load(f)
-    except json.JSONDecodeError:
-        data = {}  # If file is empty or corrupt, start with empty dict
+    except (json.JSONDecodeError, FileNotFoundError):
+        data = reset_processing_status()
+        logger.error("Invalid or missing processing status file. Resetting to default.")
     
     data["state"] = status
     if result:
         data["result"] = result
     if logs:
-        if "logs" not in data:
-            data["logs"] = []
-        data["logs"].extend(logs)  # Append new logs instead of overwriting
+        data["logs"] = logs
     
-    with open(a_ph('processing_status.json'), 'w') as f:
-        json.dump(data, f, ensure_ascii=False, default=str)
+    try:
+        with open(a_ph('processing_status.json'), 'w') as f:
+            json.dump(data, f)
+    except IOError as e:
+        logger.error(f"Error writing to processing_status.json: {str(e)}")
 
 def get_processing_status():
-    with open(a_ph('processing_status.json'), 'r') as f:
-        data = json.load(f)
+    try:
+        with open(a_ph('processing_status.json'), 'r') as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        data = reset_processing_status()
+        logger.error("Invalid or missing processing status file. Resetting to default.")
+        
+    except IOError as e:
+        data = {"state": "ERROR", "result": "Error reading status file", "logs": []}
+        logger.error(f"Error reading processing_status.json: {str(e)}")
+        
     return data
 
 def clear_processing_logs():
-    with open(a_ph('processing_status.json'), 'r') as f:
-        data = json.load(f)
-    data["logs"] = []
-    with open(a_ph('processing_status.json'), 'w') as f:
-        json.dump(data, f)
+    try:
+        with open(a_ph('processing_status.json'), 'r') as f:
+            data = json.load(f)
+            data["logs"] = []
+        with open(a_ph('processing_status.json'), 'w') as f:
+            json.dump(data, f)
+    except (json.JSONDecodeError, FileNotFoundError):
+    
+        logger.error("Invalid or missing processing status file. Resetting to default.")
+    
+
 
 def append_to_processing_logs(log_entry):
-    with open(a_ph('processing_status.json'), 'r') as f:
-        data = json.load(f)
+    try:
+        with open(a_ph('processing_status.json'), 'r') as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        logger.error("Invalid or missing processing status file. Resetting to default.")
+        data = reset_processing_status()
+    
     if "logs" not in data:
         data["logs"] = []
     data["logs"].append(log_entry)
-    with open(a_ph('processing_status.json'), 'w') as f:
-        json.dump(data, f, ensure_ascii=False, default=str)
+    
+    try:
+        with open(a_ph('processing_status.json'), 'w') as f:
+            json.dump(data, f)
+    except IOError as e:
+        logger.error(f"Error writing to processing_status.json: {str(e)}")
