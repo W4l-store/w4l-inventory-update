@@ -72,15 +72,22 @@ def apply_pack_of_map(sku_to_qtt_map, marketplace):
     return sku_to_qtt_map
 
 def set_processing_status(status, logs=None, result=None):
-    with open(a_ph('processing_status.json'), 'r') as f:
-        data = json.load(f)
+    try:
+        with open(a_ph('processing_status.json'), 'r') as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        data = {}  # If file is empty or corrupt, start with empty dict
+    
     data["state"] = status
     if result:
         data["result"] = result
     if logs:
-        data["logs"] = logs
+        if "logs" not in data:
+            data["logs"] = []
+        data["logs"].extend(logs)  # Append new logs instead of overwriting
+    
     with open(a_ph('processing_status.json'), 'w') as f:
-        json.dump(data, f)
+        json.dump(data, f, ensure_ascii=False, default=str)
 
 def get_processing_status():
     with open(a_ph('processing_status.json'), 'r') as f:
