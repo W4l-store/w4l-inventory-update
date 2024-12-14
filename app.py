@@ -11,6 +11,8 @@ import uuid
 from threading import Lock
 from flask_cors import CORS
 from collections import deque
+from utils.helpers import a_ph
+
 
 
 from utils.reserving import update_all_BS_sku_reserve
@@ -27,9 +29,8 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 logger = setup_logger()
 
 
-UPLOAD_FOLDER = os.path.join('resources', 'user_uploads')
+UPLOAD_FOLDER = '/resources/user_uploads'
 ALLOWED_EXTENSIONS = {'txt'}
-PIN_CODE = "{{1234}}"
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -69,10 +70,16 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': 'No selected file'})
     if file and allowed_file(file.filename):
-        files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], '*'))
+        upload_dir = a_ph(app.config['UPLOAD_FOLDER'])
+        # Create directory if it doesn't exist
+        os.makedirs(upload_dir, exist_ok=True)
+        # Get list of files in directory using glob
+        files = glob.glob(os.path.join(upload_dir, '*'))
+        # Remove existing files
         for f in files:
-            os.remove(f)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], "BS_stock.TXT")
+            if os.path.isfile(f):  # Only remove files, not directories
+                os.remove(f)
+        file_path = a_ph(os.path.join(app.config['UPLOAD_FOLDER'], "BS_stock.TXT"))
         file.save(file_path)
         task_id = str(uuid.uuid4())
     
