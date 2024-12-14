@@ -27,7 +27,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 logger = setup_logger()
 
 
-UPLOAD_FOLDER = 'resources/user_uploads/'
+UPLOAD_FOLDER = os.path.join('resources', 'user_uploads')
 ALLOWED_EXTENSIONS = {'txt'}
 PIN_CODE = "{{1234}}"
 
