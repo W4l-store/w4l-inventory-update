@@ -34,6 +34,30 @@ ALLOWED_EXTENSIONS = {'txt'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+def init_directories():
+    """Initialize all required directories with proper permissions"""
+    required_dirs = [
+        '/resources',
+        '/resources/user_uploads',
+        '/resources/amazon',
+        '/resources/wayfair',
+        '/resources/walmart',
+        '/resources/houzz',
+        '/resources/blue_system',
+        '/resources/reserve',
+        '/download'
+    ]
+    
+    for dir_path in required_dirs:
+        try:
+            full_path = a_ph(dir_path)
+            os.makedirs(full_path, mode=0o755, exist_ok=True)
+            logger.info(f"Ensured directory exists: {dir_path}")
+        except Exception as e:
+            logger.error(f"Error creating directory {dir_path}: {str(e)}")
+
+# Initialize directories when app starts
+init_directories()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -70,21 +94,39 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': 'No selected file'})
     if file and allowed_file(file.filename):
-        upload_dir = a_ph(app.config['UPLOAD_FOLDER'])
-        # Create directory if it doesn't exist
-        os.makedirs(upload_dir, exist_ok=True)
-        # Get list of files in directory using glob
-        files = glob.glob(os.path.join(upload_dir, '*'))
-        # Remove existing files
-        for f in files:
-            if os.path.isfile(f):  # Only remove files, not directories
-                os.remove(f)
-        file_path = a_ph(os.path.join(app.config['UPLOAD_FOLDER'], "BS_stock.TXT"))
-        file.save(file_path)
-        task_id = str(uuid.uuid4())
+        try:
+            # Get the upload directory path
+            upload_dir = a_ph(app.config['UPLOAD_FOLDER'])
+            
+            # Ensure all parent directories exist with proper permissions
+            os.makedirs(upload_dir, mode=0o755, exist_ok=True)
+            
+            # Clean up existing files
+            try:
+                files = glob.glob(os.path.join(upload_dir, '*'))
+                for f in files:
+                    if os.path.isfile(f):
+                        os.remove(f)
+            except Exception as e:
+                logger.warning(f"Error cleaning up existing files: {str(e)}")
+            
+            # Save the new file
+            file_path = a_ph(os.path.join(app.config['UPLOAD_FOLDER'], "BS_stock.TXT"))
+            file.save(file_path)
+            
+            # Ensure the file was created successfully
+            if not os.path.exists(file_path):
+                raise Exception("File was not saved successfully")
+                
+            task_id = str(uuid.uuid4())
+            threading.Thread(target=process_file_task, args=(file_path, task_id)).start()
+            return jsonify({'message': 'File uploaded and processing started'})
+            
+        except Exception as e:
+            logger.error(f"Error during file upload: {str(e)}")
+            return jsonify({'error': f'Error uploading file: {str(e)}'})
     
-    threading.Thread(target=process_file_task, args=(file_path, task_id)).start()
-    return jsonify({'message': 'File uploaded and processing started'})
+    return jsonify({'error': 'Invalid file type'})
 
 def process_file_task(file_path, task_id):
     current_task = get_processing_status()
